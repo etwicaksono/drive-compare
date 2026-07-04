@@ -9,6 +9,7 @@ import (
 	"personal-digital-inventory/internal/infrastructure/database"
 	"personal-digital-inventory/internal/infrastructure/logging"
 
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"gorm.io/gorm"
 )
 
@@ -77,4 +78,14 @@ func (a *App) shutdown(ctx context.Context) {
 
 func (a *App) Greet(name string) string {
 	return fmt.Sprintf("Hello %s, It's show time!", name)
+}
+
+func (a *App) SelectLocalDirectory() (string, error) {
+	dir, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Select Local Directory",
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to open directory dialog: %w", err)
+	}
+	return dir, nil
 }
