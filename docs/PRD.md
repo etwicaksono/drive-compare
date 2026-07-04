@@ -46,14 +46,9 @@ Pengguna tunggal (personal use). Aplikasi ini ditujukan untuk penggunaan pribadi
 
 Aplikasi harus mampu menjawab pertanyaan-pertanyaan berikut:
 
-- File mana saja yang hanya ada di laptop?
+- File mana saja yang hanya ada di local storage (laptop / external HDD)?
 - File mana saja yang hanya ada di Google Drive?
-- File mana saja yang hanya ada di Google Photos?
-- File mana saja yang ada di beberapa lokasi sekaligus?
-- File mana saja yang belum memiliki backup?
-- Film apa saja yang sudah ditonton?
-- Film apa saja yang ada di watchlist?
-- Berapa rating yang diberikan untuk sebuah film?
+- File mana saja yang ada di kedua lokasi?
 
 ---
 
@@ -81,20 +76,6 @@ File diidentifikasi berdasarkan kombinasi:
 Hash (SHA256/BLAKE3) **tidak** diimplementasikan di versi 1. Akan ditambahkan di versi mendatang jika diperlukan.
 
 Asumsi: pengguna tidak akan melakukan rename file jika ingin melakukan tracking history.
-
-#### Dashboard
-
-- Ringkasan kesehatan backup (fully backed up, local only, drive only, missing backup).
-- Jumlah file per kategori.
-- Status scan terakhir per provider.
-- Ringkasan penggunaan storage.
-
-#### Inventory View
-
-- Daftar seluruh file yang diinventarisasi.
-- Informasi lokasi setiap file (ada di Laptop / HDD / Drive / Photos).
-- Status backup per file.
-- Search dan filter.
 
 #### Compare View
 
@@ -140,13 +121,10 @@ Install & Open App
        │
        ▼
  Settings Page
- (configure providers & folders)
+ (connect Google Drive via OAuth2)
        │
        ▼
-  First Scan
-       │
-       ▼
-   Dashboard
+  Compare Page
 ```
 
 ### 6.2 Compare Flow
@@ -224,32 +202,18 @@ Laporan Tabel
 - **Domain**: Entity, value object, repository interface, provider interface. Tidak bergantung pada framework apapun.
 - **Infrastructure**: Implementasi repository (GORM/PostgreSQL), implementasi provider (local disk, Google Drive API), konfigurasi.
 
-### 7.3 Provider Interface
+### 7.3 Data Model
 
 ```go
-type Provider interface {
-    Name() string
-    Scan(ctx context.Context) ([]InventoryItem, error)
-}
-```
-
-Setiap provider (Local Disk, External HDD, Google Drive) mengimplementasikan interface yang sama. Engine tidak peduli sumber datanya dari mana.
-
-### 7.4 Data Model
-
-```go
-type InventoryItem struct {
-    Provider     string    // "local", "drive", "photos"
-    Device       string    // "laptop", "external-hdd"
+type FileItem struct {
     RelativePath string
     Name         string
+    Extension    string
     Size         int64
-    ModifiedAt   time.Time
-    RemoteID     string    // kosong untuk local
 }
 ```
 
-### 7.5 Database Schema (Awal)
+### 7.4 Database Schema (Awal)
 
 **comparisons**
 
@@ -293,52 +257,10 @@ type InventoryItem struct {
 Sidebar kiri + konten di kanan. Mirip GitHub Desktop, Obsidian, Linear.
 
 **Sidebar:**
-- Dashboard
-- Inventory
 - Compare
-- Reports
 - Settings
 
-### 8.2 Dashboard
-
-```
-──────────────────────────────────────────
- Personal Digital Inventory
-──────────────────────────────────────────
- Health
- ● Fully Backed Up      18,230
- ● Local Only              12
- ● Drive Only              25
- ● Missing Backup           4
-──────────────────────────────────────────
- Recent Scans
- Laptop          2 hours ago      ✓
- External HDD    30 days ago      ⚠
- Google Drive     1 day ago       ✓
-──────────────────────────────────────────
- Storage Summary
- Laptop           120 GB
- External HDD     500 GB
- Google Drive      80 GB
-──────────────────────────────────────────
-```
-
-### 8.3 Inventory
-
-```
-──────────────────────────────────────────────────────
- [Search...]     [Filter: All ▾]
-──────────────────────────────────────────────────────
- Filename         Size    Laptop  HDD  Drive  Status
-──────────────────────────────────────────────────────
- IMG001.jpg       4 MB     ✓      ✓     ✓    Complete
- proposal.docx    2 MB     ✓      ✗     ✗    Local Only
- Movie.mp4        1.2 GB   ✗      ✓     ✓    No Local
- Vacation.jpg     5 MB     ✗      ✗     ✓    Drive Only
-──────────────────────────────────────────────────────
-```
-
-### 8.4 Compare
+### 8.2 Compare
 
 ```
 ──────────────────────────────────────────────────────────────────────────
@@ -413,7 +335,7 @@ Sidebar kiri + konten di kanan. Mirip GitHub Desktop, Obsidian, Linear.
  - Infinite scroll (load batch berikutnya saat user scroll ke bawah)
 ```
 
-### 8.5 Settings
+### 8.3 Settings
 
 ```
 ──────────────────────────────────────────
@@ -491,34 +413,23 @@ logging:
 - Configuration loader (YAML)
 - Logging (slog)
 - Migration mechanism (goose)
-- File entity + repository
-- Provider interface
-- Local provider (scan, recursive, ignore rules)
-- Persist scan results
 
-### Milestone 2 — Comparison & UI
+### Milestone 2 — Compare Feature
 
-- Comparison engine
-- Dashboard UI
-- Inventory view UI
-- Compare view UI
-- Search & filter
-- Settings UI
-
-### Milestone 3 — Google Drive
-
+- Local directory scanner (recursive, ignore rules)
 - Google Drive API authentication (OAuth2)
-- Google Drive provider implementation
-- Google Drive scan & persist
+- Google Drive scanner
+- Comparison engine
+- Compare UI (folder picker, tabel hasil, filter, sorting, infinite scroll)
+- Settings UI (Google Drive connection, ignore patterns)
 
-### Milestone 4 — Reports & Polish
+### Milestone 3 — Polish
 
-- Reports (summary, export)
 - Error handling & edge cases
 - Performance optimization
 - Testing & QA
 
-### Milestone 5 — Future (v2)
+### Milestone 4 — Future (v2)
 
 - Google Photos provider
 - Movie Library (watched, watchlist, rating, review, TMDB integration)
@@ -533,8 +444,6 @@ logging:
 | Risk | Mitigation |
 |------|-----------|
 | Google Drive API rate limits | Implement exponential backoff dan caching |
-| Google Photos API limitations (tidak bisa download file yang bukan diupload sendiri) | Gunakan Google Photos hanya untuk inventaris, bukan restore |
-| External HDD tidak selalu terhubung | Simpan hasil scan terakhir, tampilkan status "offline" |
 | File identity collision (nama + size sama tapi isi berbeda) | Kemungkinan sangat kecil untuk personal use; tambahkan hash on-demand di v2 |
 | Scan pertama kali lambat untuk ratusan ribu file | Gunakan worker pool dengan concurrent scanning |
 | PostgreSQL harus running sebagai dependency | Dokumentasikan setup PostgreSQL; gunakan Docker Compose untuk kemudahan |
@@ -545,9 +454,8 @@ logging:
 
 | Term | Definition |
 |------|-----------|
-| Provider | Sumber data yang bisa di-scan (Local Disk, Google Drive, Google Photos) |
-| Device | Perangkat fisik dalam sebuah provider (Laptop, External HDD) |
-| Inventory | Kumpulan seluruh metadata file dari semua provider |
-| Scan | Proses membaca metadata file dari sebuah provider |
-| Compare | Proses membandingkan inventaris antar provider |
+| Local Storage | Folder di laptop atau external HDD yang dipilih user untuk di-compare |
+| Google Drive | Cloud storage Google yang diakses via Google Drive API |
+| Compare | Proses membandingkan file antara local storage dan Google Drive |
 | File Identity | Kombinasi relative path + filename + size yang mengidentifikasi sebuah file |
+| Ignore Pattern | Glob pattern untuk mengecualikan file/folder tertentu dari scan |
