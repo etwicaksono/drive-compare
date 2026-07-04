@@ -35,11 +35,15 @@ func (a *App) startup(ctx context.Context) {
 	}
 	a.cfg = cfg
 
-	a.auth = gdrive.NewAuth(gdrive.AuthConfig{
-		ClientID:     cfg.GoogleDrive.ClientID,
-		ClientSecret: cfg.GoogleDrive.ClientSecret,
-		TokenFile:    cfg.GoogleDrive.TokenFile,
-	})
+	if cfg.GoogleDrive.ClientID == "" || cfg.GoogleDrive.ClientSecret == "" {
+		slog.Warn("Google Drive credentials not configured. Set PDI_GOOGLE_CLIENT_ID and PDI_GOOGLE_CLIENT_SECRET environment variables, or fill google_drive.client_id and google_drive.client_secret in config.yaml")
+	} else {
+		a.auth = gdrive.NewAuth(gdrive.AuthConfig{
+			ClientID:     cfg.GoogleDrive.ClientID,
+			ClientSecret: cfg.GoogleDrive.ClientSecret,
+			TokenFile:    cfg.GoogleDrive.TokenFile,
+		})
+	}
 
 	if err := logging.Setup(cfg.Logging.Level); err != nil {
 		slog.Warn("Failed to configure logging", "error", err)
@@ -107,7 +111,7 @@ func (a *App) GetDriveConnectionStatus() bool {
 
 func (a *App) ConnectGoogleDrive() (string, error) {
 	if a.auth == nil {
-		return "", fmt.Errorf("Google Drive not configured")
+		return "", fmt.Errorf("Google Drive not configured. Set PDI_GOOGLE_CLIENT_ID and PDI_GOOGLE_CLIENT_SECRET environment variables, or fill them in config.yaml")
 	}
 	return a.auth.GetAuthURL(), nil
 }
