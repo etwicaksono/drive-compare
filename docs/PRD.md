@@ -98,16 +98,18 @@ Asumsi: pengguna tidak akan melakukan rename file jika ingin melakukan tracking 
 
 #### Compare View
 
-- Menampilkan file yang hanya ada di satu lokasi tertentu.
-- Kategori: "Only in Laptop", "Only in Drive", "Only in HDD", "Exists Everywhere".
-- Navigasi ke file (Open in Explorer / Open in Google Drive).
+- User memilih root directory local (laptop atau external HDD).
+- User memilih root directory Google Drive.
+- Sistem melakukan scanning kedua lokasi dan komparasi otomatis.
+- Sistem menampilkan laporan dalam bentuk tabel dengan 3 kategori:
+  - **Local Only**: file yang hanya ada di local storage.
+  - **Drive Only**: file yang hanya ada di Google Drive.
+  - **Both**: file yang ada di kedua lokasi.
 
 #### Settings
 
-- Konfigurasi provider (enable/disable).
-- Konfigurasi folder yang di-scan per provider.
+- Konfigurasi koneksi Google Drive (OAuth2 connect/disconnect).
 - Konfigurasi ignore patterns (node_modules, .git, Thumbs.db, dll.).
-- Konfigurasi jadwal scan (manual, setiap startup, harian).
 
 ### 5.2 In Scope (Version 2 — Future)
 
@@ -147,60 +149,39 @@ Install & Open App
    Dashboard
 ```
 
-### 6.2 Regular Use
+### 6.2 Compare Flow
 
 ```
 Open App
    │
    ▼
-Dashboard (lihat health overview)
+Compare Page
    │
-   ├── Scan Now (manual trigger)
-   │       │
-   │       ▼
-   │   Scanning...
-   │       │
-   │       ▼
-   │   Dashboard Updated
+   ▼
+Pilih Root Directory Local
+(laptop atau external HDD via folder picker)
    │
-   ├── Inventory (browse semua file)
-   │       │
-   │       ▼
-   │   Search / Filter
-   │       │
-   │       ▼
-   │   File Detail (lokasi, status)
+   ▼
+Pilih Root Directory Google Drive
+(browse folder Google Drive)
    │
-   ├── Compare (lihat perbedaan antar lokasi)
-   │       │
-   │       ▼
-   │   "Only in Laptop" / "Only in Drive" / etc.
-   │       │
-   │       ▼
-   │   Open in Explorer / Open in Drive
+   ▼
+Klik [Compare]
    │
-   └── Settings (ubah konfigurasi)
-```
-
-### 6.3 External HDD Plugged In
-
-```
-Colok External HDD
-       │
-       ▼
-  Open App
-       │
-       ▼
- Dashboard: "External HDD — Last scan: 30 days ago"
-       │
-       ▼
-  Scan External HDD
-       │
-       ▼
- "17 file baru, 3 file berubah"
-       │
-       ▼
- Dashboard Updated
+   ▼
+Scanning & Comparing...
+(scan kedua lokasi, bandingkan berdasarkan relative path + name + size)
+   │
+   ▼
+Laporan Tabel
+┌──────────────────────────────────────────────────────────┐
+│ [Local Only]          [Drive Only]          [Both]       │
+├──────────────────────────────────────────────────────────┤
+│ Filename       Size       Relative Path                  │
+│ proposal.docx  2 MB       Documents/                     │
+│ notes.txt      1 KB       Documents/Work/                │
+│ ...                                                      │
+└──────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -270,76 +251,38 @@ type InventoryItem struct {
 
 ### 7.5 Database Schema (Awal)
 
-**providers**
+**comparisons**
 
-| Column | Type   |
-|--------|--------|
-| id     | uint   |
-| name   | string |
-| type   | string |
+| Column            | Type      | Description                                      |
+|-------------------|-----------|--------------------------------------------------|
+| id                | uint      | Primary key                                      |
+| local_path        | string    | Root directory local yang dipilih user            |
+| drive_path        | string    | Root directory Google Drive yang dipilih user     |
+| started_at        | time.Time | Waktu mulai compare                              |
+| finished_at       | time.Time | Waktu selesai compare                            |
+| total_local_only  | int       | Jumlah file yang hanya ada di local              |
+| total_drive_only  | int       | Jumlah file yang hanya ada di drive              |
+| total_both        | int       | Jumlah file yang ada di keduanya                 |
 
-**devices**
+**comparison_files**
 
-| Column      | Type   |
-|-------------|--------|
-| id          | uint   |
-| name        | string |
-| provider_id | uint   |
-
-**files**
-
-| Column        | Type      |
-|---------------|-----------|
-| id            | uint      |
-| filename      | string    |
-| relative_path | string    |
-| size          | int64     |
-| modified_at   | time.Time |
-| source        | string    |
-| device        | string    |
-| remote_id     | string    |
-| scan_id       | uint      |
-| exists        | bool      |
-
-**scans**
-
-| Column     | Type      |
-|------------|-----------|
-| id         | uint      |
-| provider   | string    |
-| device     | string    |
-| started_at | time.Time |
-| finished_at| time.Time |
-| total_files| int       |
-| status     | string    |
+| Column         | Type      | Description                                         |
+|----------------|-----------|-----------------------------------------------------|
+| id             | uint      | Primary key                                         |
+| comparison_id  | uint      | Foreign key ke comparisons                          |
+| filename       | string    | Nama file tanpa extension                           |
+| extension      | string    | Extension file (.jpg, .png, .mp4, dll.)             |
+| relative_path  | string    | Path relatif terhadap root directory                |
+| size           | int64     | Ukuran file dalam bytes                             |
+| status         | string    | "local_only", "drive_only", "both"                  |
 
 **ignore_patterns**
 
-| Column  | Type   |
-|---------|--------|
-| id      | uint   |
-| pattern | string |
+| Column  | Type   | Description                                          |
+|---------|--------|------------------------------------------------------|
+| id      | uint   | Primary key                                          |
+| pattern | string | Glob pattern yang di-ignore saat scan (e.g. .git)    |
 
-### 7.6 Google Drive Structure (Target)
-
-```
-Google Drive
-├── Backup/
-│   ├── Laptop/
-│   │   ├── Documents/
-│   │   ├── Photos/
-│   │   └── ...
-│   ├── Android/
-│   │   ├── DCIM/
-│   │   ├── WhatsApp/
-│   │   └── ...
-│   └── External/
-│       ├── Movie/
-│       ├── Archive/
-│       └── ...
-└── .metadata/
-    └── config.json
-```
 
 ---
 
@@ -398,41 +341,86 @@ Sidebar kiri + konten di kanan. Mirip GitHub Desktop, Obsidian, Linear.
 ### 8.4 Compare
 
 ```
-──────────────────────────────────────────
- [Only in Laptop]  [Only in Drive]  [Only in HDD]  [Everywhere]
-──────────────────────────────────────────
+──────────────────────────────────────────────────────────────────────────
+ Compare
+──────────────────────────────────────────────────────────────────────────
 
- Only in Laptop (12 files)
-──────────────────────────────────────────
- proposal.docx           2 MB
- screenshot.png        800 KB
- notes.txt               1 KB
-──────────────────────────────────────────
- [Open in Explorer]
+ Local Directory
+ [D:\Photos                              ] [Browse]
+
+ Google Drive Directory
+ [Backup/Photos                          ] [Browse]
+
+ [Compare]
+──────────────────────────────────────────────────────────────────────────
+
+ Results:  Local Only (12)  |  Drive Only (8)  |  Both (1,204)
+
+ [Search filename...]
+
+ Filters:
+ Extension  [All ▾]  (.jpg, .png, .mp4, .pdf, .docx, ...)
+ Size Range [All ▾]  (< 1 MB, 1-10 MB, 10-100 MB, 100 MB-1 GB, > 1 GB)
+
+──────────────────────────────────────────────────────────────────────────
+ Tab: [Local Only]
+──────────────────────────────────────────────────────────────────────────
+ No ▴  Filename ▴▾       Extension ▴▾  Size ▴▾     Relative Path ▴▾
+──────────────────────────────────────────────────────────────────────────
+ 1     screenshot        .png          800 KB      Screenshots/
+ 2     proposal          .docx         2 MB        Documents/Work/
+ 3     notes             .txt          1 KB        Documents/
+ ...   (infinite scroll)
+──────────────────────────────────────────────────────────────────────────
+
+ Tab: [Drive Only]
+──────────────────────────────────────────────────────────────────────────
+ No ▴  Filename ▴▾       Extension ▴▾  Size ▴▾     Relative Path ▴▾
+──────────────────────────────────────────────────────────────────────────
+ 1     Vacation          .jpg          5 MB        Holiday/2024/
+ 2     old_backup        .zip          120 MB      Archive/
+ ...   (infinite scroll)
+──────────────────────────────────────────────────────────────────────────
+
+ Tab: [Both]
+──────────────────────────────────────────────────────────────────────────
+ No ▴  Filename ▴▾       Extension ▴▾  Size ▴▾     Relative Path ▴▾
+──────────────────────────────────────────────────────────────────────────
+ 1     IMG001            .jpg          4 MB        DCIM/Camera/
+ 2     IMG002            .jpg          3.8 MB      DCIM/Camera/
+ 3     Movie             .mp4          1.2 GB      Videos/
+ ...   (infinite scroll)
+──────────────────────────────────────────────────────────────────────────
+
+ Kolom Tabel:
+ - No          : Nomor urut baris
+ - Filename    : Nama file tanpa extension
+ - Extension   : Extension file (.jpg, .png, .mp4, dll.)
+ - Size        : Ukuran file (human-readable: KB, MB, GB)
+ - Relative Path: Path relatif terhadap root directory yang dipilih
+
+ Sorting:
+ - Semua kolom bisa di-sort ascending/descending
+ - Default sort: Filename ascending
+
+ Filter:
+ - Search      : Text search pada filename (partial match, case-insensitive)
+ - Extension   : Dropdown multi-select, daftar extension diambil dari hasil scan
+ - Size Range  : Dropdown single-select (< 1 MB, 1-10 MB, 10-100 MB,
+                 100 MB-1 GB, > 1 GB)
+
+ Scrolling:
+ - Infinite scroll (load batch berikutnya saat user scroll ke bawah)
 ```
 
 ### 8.5 Settings
 
 ```
 ──────────────────────────────────────────
- Providers
+ Google Drive
 ──────────────────────────────────────────
- ☑ Laptop
-   Folders:
-   - D:\Documents
-   - D:\Photos
-   - D:\Android Backup
-
- ☑ External HDD
-   Folders:
-   - E:\Movie
-   - E:\Archive
-
- ☑ Google Drive
-   Status: Connected
-   [Disconnect]
-
- ☐ Google Photos (coming soon)
+ Status: Connected
+ [Disconnect]
 ──────────────────────────────────────────
  Ignore Patterns
 ──────────────────────────────────────────
@@ -441,12 +429,6 @@ Sidebar kiri + konten di kanan. Mirip GitHub Desktop, Obsidian, Linear.
  Thumbs.db
  desktop.ini
  [+ Add Pattern]
-──────────────────────────────────────────
- Scan Schedule
-──────────────────────────────────────────
- ○ Manual Only
- ● Every Startup
- ○ Daily
 ──────────────────────────────────────────
 ```
 
@@ -463,23 +445,6 @@ database:
   name: personal_digital_inventory
   sslmode: disable
 
-sources:
-  - name: laptop
-    type: local
-    paths:
-      - D:\Documents
-      - D:\Photos
-      - D:\Android Backup
-
-  - name: external-hdd
-    type: local
-    paths:
-      - E:\Movie
-      - E:\Archive
-
-  - name: google-drive
-    type: drive
-
 ignore:
   - node_modules
   - .git
@@ -487,9 +452,6 @@ ignore:
   - desktop.ini
   - "*.tmp"
   - "*.cache"
-
-scan:
-  schedule: startup  # manual | startup | daily
 
 logging:
   level: info  # debug | info | warn | error
