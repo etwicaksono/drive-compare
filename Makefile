@@ -1,13 +1,12 @@
 .PHONY: all build run clean \
 	fe-install fe-build fe-run fe-lint fe-fmt \
-	be-build be-run be-fmt be-test \
-	wails-dev wails-build
+	be-fmt be-test \
+	dev wails-build
 
 # --------------------------------------------------
 # Variables
 # --------------------------------------------------
 BE_OUT_DIR   := temp
-BE_BINARY    := $(BE_OUT_DIR)/personal-digital-inventory.exe
 FE_DIR       := frontend
 
 # --------------------------------------------------
@@ -27,12 +26,15 @@ endif
 # --------------------------------------------------
 all: build
 
-build: be-build fe-build
+build: wails-build
+
+run: dev
 
 clean:
 	$(call RMDIR,$(BE_OUT_DIR))
 	$(call RMDIR,$(FE_DIR)/dist)
 	$(call RMDIR,$(FE_DIR)/node_modules/.cache)
+	$(call RMDIR,build)
 
 # --------------------------------------------------
 # Frontend
@@ -61,16 +63,6 @@ fe-fmt-check:
 # --------------------------------------------------
 # Backend
 # --------------------------------------------------
-be-build:
-	$(call MKDIR,$(BE_OUT_DIR))
-	go build -o $(BE_BINARY) .
-
-be-run:
-	go run .
-
-be-wire:
-	wire ./internal/infrastructure/di/...
-
 be-fmt:
 	go fmt ./...
 
@@ -91,7 +83,7 @@ be-lint:
 # --------------------------------------------------
 # Wails (full app)
 # --------------------------------------------------
-wails-dev:
+dev:
 	wails dev
 
 wails-build:
