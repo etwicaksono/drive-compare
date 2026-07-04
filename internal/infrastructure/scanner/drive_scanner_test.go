@@ -212,3 +212,49 @@ func TestIsGoogleDoc(t *testing.T) {
 		}
 	}
 }
+
+func TestDriveScanner_CancelledContext(t *testing.T) {
+	mock := newMockDriveAPI()
+	mock.addFiles("root", &drive.File{
+		Id:       "file1",
+		Name:     "photo.jpg",
+		Size:     1024,
+		MimeType: "image/jpeg",
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	s := NewDriveScanner(mock, nil)
+	_, err := s.Scan(ctx, "root")
+	if err == nil {
+		t.Fatal("Scan() should return error for cancelled context")
+	}
+}
+
+func TestDriveScanner_FileWithoutExtension(t *testing.T) {
+	mock := newMockDriveAPI()
+	mock.addFiles("root", &drive.File{
+		Id:       "file1",
+		Name:     "Makefile",
+		Size:     100,
+		MimeType: "application/octet-stream",
+	})
+
+	s := NewDriveScanner(mock, nil)
+	items, err := s.Scan(context.Background(), "root")
+	if err != nil {
+		t.Fatalf("Scan() error: %v", err)
+	}
+
+	if len(items) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(items))
+	}
+
+	if items[0].Name != "Makefile" {
+		t.Errorf("Name = %q, want %q", items[0].Name, "Makefile")
+	}
+	if items[0].Extension != "" {
+		t.Errorf("Extension = %q, want empty", items[0].Extension)
+	}
+}

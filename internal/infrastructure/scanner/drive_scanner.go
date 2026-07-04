@@ -77,6 +77,10 @@ func (s *DriveScanner) scanFolder(ctx context.Context, folderID string, relPath 
 	var pageToken string
 
 	for {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+
 		files, nextToken, err := s.api.ListFiles(ctx, query, "", pageToken)
 		if err != nil {
 			return fmt.Errorf("failed to list files in folder %s: %w", folderID, err)
