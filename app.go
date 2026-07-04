@@ -9,6 +9,7 @@ import (
 	"personal-digital-inventory/internal/infrastructure/database"
 	"personal-digital-inventory/internal/infrastructure/gdrive"
 	"personal-digital-inventory/internal/infrastructure/logging"
+	"personal-digital-inventory/internal/infrastructure/scanner"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"gorm.io/gorm"
@@ -164,4 +165,54 @@ func (a *App) RemoveIgnorePattern(pattern string) error {
 		}
 	}
 	return fmt.Errorf("pattern %q not found", pattern)
+}
+
+type DriveFolder struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+func (a *App) ListDriveFolders(parentID string) ([]DriveFolder, error) {
+	if a.auth == nil {
+		return nil, fmt.Errorf("Google Drive not configured")
+	}
+	if !a.auth.IsConnected() {
+		return nil, fmt.Errorf("Google Drive not connected. Please connect in Settings first.")
+	}
+
+	client, err := a.auth.GetClient(a.ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Drive client: %w", err)
+	}
+
+	api, err := scanner.NewRealDriveAPI(client)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Drive API: %w", err)
+	}
+
+	if parentID == "" {
+		parentID = "root"
+	}
+
+	query := fmt.Sprintf("'%s' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false", parentID)
+	var folders []DriveFolder
+	var pageToken string
+
+	for {
+		files, nextToken, err := api.ListFiles(a.ctx, query, "", pageToken)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list Drive folders: %w", err)
+		}
+
+		for _, f := range files {
+			folders = append(folders, DriveFolder{ID: f.Id, Name: f.Name})
+		}
+
+		if nextToken == "" {
+			break
+		}
+		pageToken = nextToken
+	}
+
+	return folders, nil
 }

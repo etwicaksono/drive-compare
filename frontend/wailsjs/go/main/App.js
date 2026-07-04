@@ -30,6 +30,10 @@ export function Greet(arg1) {
   return window['go']['main']['App']['Greet'](arg1);
 }
 
+export function ListDriveFolders(arg1) {
+  return window['go']['main']['App']['ListDriveFolders'](arg1);
+}
+
 export function RemoveIgnorePattern(arg1) {
   return window['go']['main']['App']['RemoveIgnorePattern'](arg1);
 }
