@@ -21,7 +21,7 @@ func createFile(t *testing.T, path string, size int) {
 func TestLocalScanner_EmptyDirectory(t *testing.T) {
 	dir := t.TempDir()
 
-	s := NewLocalScanner()
+	s := NewLocalScanner(nil)
 	items, err := s.Scan(dir)
 	if err != nil {
 		t.Fatalf("Scan() error: %v", err)
@@ -36,7 +36,7 @@ func TestLocalScanner_SingleFile(t *testing.T) {
 	dir := t.TempDir()
 	createFile(t, filepath.Join(dir, "photo.jpg"), 1024)
 
-	s := NewLocalScanner()
+	s := NewLocalScanner(nil)
 	items, err := s.Scan(dir)
 	if err != nil {
 		t.Fatalf("Scan() error: %v", err)
@@ -68,7 +68,7 @@ func TestLocalScanner_NestedDirectories(t *testing.T) {
 	createFile(t, filepath.Join(dir, "Documents", "Work", "report.docx"), 4096)
 	createFile(t, filepath.Join(dir, "Photos", "DCIM", "img001.png"), 8192)
 
-	s := NewLocalScanner()
+	s := NewLocalScanner(nil)
 	items, err := s.Scan(dir)
 	if err != nil {
 		t.Fatalf("Scan() error: %v", err)
@@ -116,7 +116,7 @@ func TestLocalScanner_FileWithoutExtension(t *testing.T) {
 	dir := t.TempDir()
 	createFile(t, filepath.Join(dir, "Makefile"), 100)
 
-	s := NewLocalScanner()
+	s := NewLocalScanner(nil)
 	items, err := s.Scan(dir)
 	if err != nil {
 		t.Fatalf("Scan() error: %v", err)
@@ -138,7 +138,7 @@ func TestLocalScanner_FileWithMultipleDots(t *testing.T) {
 	dir := t.TempDir()
 	createFile(t, filepath.Join(dir, "archive.tar.gz"), 500)
 
-	s := NewLocalScanner()
+	s := NewLocalScanner(nil)
 	items, err := s.Scan(dir)
 	if err != nil {
 		t.Fatalf("Scan() error: %v", err)
@@ -157,7 +157,7 @@ func TestLocalScanner_FileWithMultipleDots(t *testing.T) {
 }
 
 func TestLocalScanner_NonExistentDirectory(t *testing.T) {
-	s := NewLocalScanner()
+	s := NewLocalScanner(nil)
 	_, err := s.Scan("/nonexistent/path/that/does/not/exist")
 	if err == nil {
 		t.Fatal("Scan() should return error for non-existent directory")
@@ -168,7 +168,7 @@ func TestLocalScanner_ZeroSizeFile(t *testing.T) {
 	dir := t.TempDir()
 	createFile(t, filepath.Join(dir, "empty.txt"), 0)
 
-	s := NewLocalScanner()
+	s := NewLocalScanner(nil)
 	items, err := s.Scan(dir)
 	if err != nil {
 		t.Fatalf("Scan() error: %v", err)
@@ -204,6 +204,144 @@ func TestSplitNameExt(t *testing.T) {
 		}
 		if ext != tt.wantExt {
 			t.Errorf("splitNameExt(%q) ext = %q, want %q", tt.filename, ext, tt.wantExt)
+		}
+	}
+}
+
+func TestLocalScanner_IgnoreDirectory(t *testing.T) {
+	dir := t.TempDir()
+	createFile(t, filepath.Join(dir, "keep.txt"), 10)
+	createFile(t, filepath.Join(dir, "node_modules", "pkg", "index.js"), 100)
+	createFile(t, filepath.Join(dir, ".git", "config"), 50)
+
+	s := NewLocalScanner([]string{"node_modules", ".git"})
+	items, err := s.Scan(dir)
+	if err != nil {
+		t.Fatalf("Scan() error: %v", err)
+	}
+
+	if len(items) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(items))
+	}
+
+	if items[0].Name != "keep" {
+		t.Errorf("Name = %q, want %q", items[0].Name, "keep")
+	}
+}
+
+func TestLocalScanner_IgnoreFileByGlob(t *testing.T) {
+	dir := t.TempDir()
+	createFile(t, filepath.Join(dir, "document.pdf"), 100)
+	createFile(t, filepath.Join(dir, "temp.tmp"), 50)
+	createFile(t, filepath.Join(dir, "cache.cache"), 30)
+
+	s := NewLocalScanner([]string{"*.tmp", "*.cache"})
+	items, err := s.Scan(dir)
+	if err != nil {
+		t.Fatalf("Scan() error: %v", err)
+	}
+
+	if len(items) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(items))
+	}
+
+	if items[0].Name != "document" {
+		t.Errorf("Name = %q, want %q", items[0].Name, "document")
+	}
+}
+
+func TestLocalScanner_IgnoreSpecificFiles(t *testing.T) {
+	dir := t.TempDir()
+	createFile(t, filepath.Join(dir, "photo.jpg"), 100)
+	createFile(t, filepath.Join(dir, "Thumbs.db"), 50)
+	createFile(t, filepath.Join(dir, "desktop.ini"), 30)
+
+	s := NewLocalScanner([]string{"Thumbs.db", "desktop.ini"})
+	items, err := s.Scan(dir)
+	if err != nil {
+		t.Fatalf("Scan() error: %v", err)
+	}
+
+	if len(items) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(items))
+	}
+
+	if items[0].Name != "photo" {
+		t.Errorf("Name = %q, want %q", items[0].Name, "photo")
+	}
+}
+
+func TestLocalScanner_IgnoreNestedMatch(t *testing.T) {
+	dir := t.TempDir()
+	createFile(t, filepath.Join(dir, "src", "app.ts"), 100)
+	createFile(t, filepath.Join(dir, "src", "node_modules", "lib", "index.js"), 200)
+
+	s := NewLocalScanner([]string{"node_modules"})
+	items, err := s.Scan(dir)
+	if err != nil {
+		t.Fatalf("Scan() error: %v", err)
+	}
+
+	if len(items) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(items))
+	}
+
+	if items[0].Name != "app" {
+		t.Errorf("Name = %q, want %q", items[0].Name, "app")
+	}
+}
+
+func TestLocalScanner_NoIgnorePatterns(t *testing.T) {
+	dir := t.TempDir()
+	createFile(t, filepath.Join(dir, "node_modules", "pkg.js"), 100)
+	createFile(t, filepath.Join(dir, "file.tmp"), 50)
+
+	s := NewLocalScanner(nil)
+	items, err := s.Scan(dir)
+	if err != nil {
+		t.Fatalf("Scan() error: %v", err)
+	}
+
+	if len(items) != 2 {
+		t.Errorf("expected 2 items (no ignore), got %d", len(items))
+	}
+}
+
+func TestLocalScanner_EmptyIgnorePatterns(t *testing.T) {
+	dir := t.TempDir()
+	createFile(t, filepath.Join(dir, "file.txt"), 10)
+
+	s := NewLocalScanner([]string{})
+	items, err := s.Scan(dir)
+	if err != nil {
+		t.Fatalf("Scan() error: %v", err)
+	}
+
+	if len(items) != 1 {
+		t.Errorf("expected 1 item, got %d", len(items))
+	}
+}
+
+func TestShouldIgnore(t *testing.T) {
+	s := NewLocalScanner([]string{"node_modules", ".git", "*.tmp", "Thumbs.db"})
+
+	tests := []struct {
+		name string
+		want bool
+	}{
+		{"node_modules", true},
+		{".git", true},
+		{"file.tmp", true},
+		{"Thumbs.db", true},
+		{"photo.jpg", false},
+		{"document.pdf", false},
+		{".gitignore", false},
+	}
+
+	for _, tt := range tests {
+		got := s.shouldIgnore(tt.name)
+		if got != tt.want {
+			t.Errorf("shouldIgnore(%q) = %v, want %v", tt.name, got, tt.want)
 		}
 	}
 }

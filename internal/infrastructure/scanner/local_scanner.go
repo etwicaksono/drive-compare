@@ -9,10 +9,12 @@ import (
 	"personal-digital-inventory/internal/domain"
 )
 
-type LocalScanner struct{}
+type LocalScanner struct {
+	ignorePatterns []string
+}
 
-func NewLocalScanner() *LocalScanner {
-	return &LocalScanner{}
+func NewLocalScanner(ignorePatterns []string) *LocalScanner {
+	return &LocalScanner{ignorePatterns: ignorePatterns}
 }
 
 func (s *LocalScanner) Scan(rootDir string) ([]domain.FileItem, error) {
@@ -26,6 +28,15 @@ func (s *LocalScanner) Scan(rootDir string) ([]domain.FileItem, error) {
 	err = filepath.WalkDir(absRoot, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return fmt.Errorf("error accessing %q: %w", path, err)
+		}
+
+		name := d.Name()
+
+		if path != absRoot && s.shouldIgnore(name) {
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
 		}
 
 		if d.IsDir() {
@@ -44,7 +55,7 @@ func (s *LocalScanner) Scan(rootDir string) ([]domain.FileItem, error) {
 
 		relPath = filepath.ToSlash(relPath)
 
-		name, ext := splitNameExt(filepath.Base(path))
+		fileName, ext := splitNameExt(filepath.Base(path))
 
 		relDir := filepath.ToSlash(filepath.Dir(relPath))
 		if relDir == "." {
@@ -55,7 +66,7 @@ func (s *LocalScanner) Scan(rootDir string) ([]domain.FileItem, error) {
 
 		items = append(items, domain.FileItem{
 			RelativePath: relDir,
-			Name:         name,
+			Name:         fileName,
 			Extension:    ext,
 			Size:         info.Size(),
 		})
@@ -68,6 +79,16 @@ func (s *LocalScanner) Scan(rootDir string) ([]domain.FileItem, error) {
 	}
 
 	return items, nil
+}
+
+func (s *LocalScanner) shouldIgnore(name string) bool {
+	for _, pattern := range s.ignorePatterns {
+		matched, err := filepath.Match(pattern, name)
+		if err == nil && matched {
+			return true
+		}
+	}
+	return false
 }
 
 func splitNameExt(filename string) (string, string) {
