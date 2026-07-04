@@ -7,6 +7,7 @@ import (
 
 	"personal-digital-inventory/internal/infrastructure/config"
 	"personal-digital-inventory/internal/infrastructure/database"
+	"personal-digital-inventory/internal/infrastructure/gdrive"
 	"personal-digital-inventory/internal/infrastructure/logging"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -14,9 +15,10 @@ import (
 )
 
 type App struct {
-	ctx context.Context
-	db  *gorm.DB
-	cfg *config.Config
+	ctx  context.Context
+	db   *gorm.DB
+	cfg  *config.Config
+	auth *gdrive.Auth
 }
 
 func NewApp() *App {
@@ -32,6 +34,12 @@ func (a *App) startup(ctx context.Context) {
 		return
 	}
 	a.cfg = cfg
+
+	a.auth = gdrive.NewAuth(gdrive.AuthConfig{
+		ClientID:     cfg.GoogleDrive.ClientID,
+		ClientSecret: cfg.GoogleDrive.ClientSecret,
+		TokenFile:    cfg.GoogleDrive.TokenFile,
+	})
 
 	if err := logging.Setup(cfg.Logging.Level); err != nil {
 		slog.Warn("Failed to configure logging", "error", err)
@@ -88,4 +96,32 @@ func (a *App) SelectLocalDirectory() (string, error) {
 		return "", fmt.Errorf("failed to open directory dialog: %w", err)
 	}
 	return dir, nil
+}
+
+func (a *App) GetDriveConnectionStatus() bool {
+	if a.auth == nil {
+		return false
+	}
+	return a.auth.IsConnected()
+}
+
+func (a *App) ConnectGoogleDrive() (string, error) {
+	if a.auth == nil {
+		return "", fmt.Errorf("Google Drive not configured")
+	}
+	return a.auth.GetAuthURL(), nil
+}
+
+func (a *App) ExchangeGoogleDriveCode(code string) error {
+	if a.auth == nil {
+		return fmt.Errorf("Google Drive not configured")
+	}
+	return a.auth.Exchange(a.ctx, code)
+}
+
+func (a *App) DisconnectGoogleDrive() error {
+	if a.auth == nil {
+		return fmt.Errorf("Google Drive not configured")
+	}
+	return a.auth.Disconnect()
 }
