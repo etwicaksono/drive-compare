@@ -113,7 +113,7 @@ func (a *App) ConnectGoogleDrive() (string, error) {
 	if a.auth == nil {
 		return "", fmt.Errorf("Google Drive not configured. Set PDI_GOOGLE_CLIENT_ID and PDI_GOOGLE_CLIENT_SECRET environment variables, or fill them in config.yaml")
 	}
-	return a.auth.GetAuthURL(), nil
+	return a.auth.ConnectWithCallback(a.ctx)
 }
 
 func (a *App) ExchangeGoogleDriveCode(code string) error {

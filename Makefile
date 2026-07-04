@@ -31,7 +31,8 @@ all: build
 
 build: wails-build
 
-run: dev
+run:
+	.\build\bin\personal-digital-inventory.exe
 
 clean:
 	$(call RMDIR,$(BE_OUT_DIR))

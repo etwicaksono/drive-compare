@@ -4,8 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
+	"net"
 	"net/http"
 	"os"
+	"time"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -40,6 +43,62 @@ func NewAuth(cfg AuthConfig) *Auth {
 
 func (a *Auth) GetAuthURL() string {
 	return a.config.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
+}
+
+func (a *Auth) ConnectWithCallback(ctx context.Context) (string, error) {
+	resultCh := make(chan error, 1)
+
+	mux := http.NewServeMux()
+	server := &http.Server{
+		Handler: mux,
+	}
+
+	mux.HandleFunc("/oauth/callback", func(w http.ResponseWriter, r *http.Request) {
+		code := r.URL.Query().Get("code")
+		if code == "" {
+			w.Header().Set("Content-Type", "text/html")
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprint(w, `<html><body style="font-family:sans-serif;text-align:center;padding:60px"><h2>Authorization Failed</h2><p>No authorization code received.</p><p>You can close this tab.</p></body></html>`)
+			resultCh <- fmt.Errorf("no authorization code received")
+			return
+		}
+
+		err := a.Exchange(ctx, code)
+		if err != nil {
+			w.Header().Set("Content-Type", "text/html")
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprint(w, `<html><body style="font-family:sans-serif;text-align:center;padding:60px"><h2>Authorization Failed</h2><p>Failed to exchange code. Please try again.</p><p>You can close this tab.</p></body></html>`)
+			resultCh <- err
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprint(w, `<html><body style="font-family:sans-serif;text-align:center;padding:60px"><h2>Connected!</h2><p>Google Drive connected successfully.</p><p>You can close this tab and return to the app.</p></body></html>`)
+		resultCh <- nil
+	})
+
+	listener, err := net.Listen("tcp", ":8085")
+	if err != nil {
+		return "", fmt.Errorf("failed to start OAuth callback server: %w", err)
+	}
+
+	go func() {
+		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
+			slog.Error("OAuth callback server error", "error", err)
+		}
+	}()
+
+	go func() {
+		select {
+		case <-resultCh:
+			time.Sleep(500 * time.Millisecond)
+			server.Close()
+		case <-ctx.Done():
+			server.Close()
+		}
+	}()
+
+	return a.GetAuthURL(), nil
 }
 
 func (a *Auth) Exchange(ctx context.Context, code string) error {

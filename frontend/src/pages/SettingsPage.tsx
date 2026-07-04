@@ -42,6 +42,16 @@ function GoogleDriveSection(): React.JSX.Element {
       const url = await ConnectGoogleDrive();
       if (url) {
         window.open(url, '_blank');
+        const poll = setInterval(async () => {
+          try {
+            const status = await GetDriveConnectionStatus();
+            if (status) {
+              clearInterval(poll);
+              setConnected(true);
+            }
+          } catch { /* ignore */ }
+        }, 2000);
+        setTimeout(() => clearInterval(poll), 120000);
       }
     } catch (err) {
       setError(`Failed to start Google Drive connection: ${formatError(err)}`);
