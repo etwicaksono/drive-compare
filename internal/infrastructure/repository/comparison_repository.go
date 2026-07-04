@@ -60,3 +60,49 @@ func (r *GormComparisonRepository) Delete(ctx context.Context, id uint) error {
 	}
 	return nil
 }
+
+func (r *GormComparisonRepository) SaveFiles(ctx context.Context, files []domain.ComparisonFile) error {
+	if len(files) == 0 {
+		return nil
+	}
+
+	models := make([]ComparisonFileModel, len(files))
+	for i, f := range files {
+		models[i] = ComparisonFileModel{
+			ComparisonID: f.ComparisonID,
+			Filename:     f.Filename,
+			Extension:    f.Extension,
+			RelativePath: f.RelativePath,
+			Size:         f.Size,
+			Status:       string(f.Status),
+		}
+	}
+
+	result := r.db.WithContext(ctx).Create(&models)
+	if result.Error != nil {
+		return fmt.Errorf("failed to save comparison files: %w", result.Error)
+	}
+	return nil
+}
+
+func (r *GormComparisonRepository) ListFilesByComparisonID(ctx context.Context, comparisonID uint) ([]domain.ComparisonFile, error) {
+	var models []ComparisonFileModel
+	result := r.db.WithContext(ctx).Where("comparison_id = ?", comparisonID).Find(&models)
+	if result.Error != nil {
+		return nil, fmt.Errorf("failed to list comparison files: %w", result.Error)
+	}
+
+	files := make([]domain.ComparisonFile, len(models))
+	for i, m := range models {
+		files[i] = domain.ComparisonFile{
+			ID:           m.ID,
+			ComparisonID: m.ComparisonID,
+			Filename:     m.Filename,
+			Extension:    m.Extension,
+			RelativePath: m.RelativePath,
+			Size:         m.Size,
+			Status:       domain.FileStatus(m.Status),
+		}
+	}
+	return files, nil
+}

@@ -7,6 +7,8 @@ type ComparisonRepository interface {
 	FindByID(ctx context.Context, id uint) (*Comparison, error)
 	List(ctx context.Context) ([]Comparison, error)
 	Delete(ctx context.Context, id uint) error
+	SaveFiles(ctx context.Context, files []ComparisonFile) error
+	ListFilesByComparisonID(ctx context.Context, comparisonID uint) ([]ComparisonFile, error)
 }
 
 type IgnorePatternRepository interface {
