@@ -14,9 +14,12 @@ FE_DIR       := frontend
 # --------------------------------------------------
 ifeq ($(OS),Windows_NT)
 SHELL  := cmd.exe
+GOPATH := $(shell go env GOPATH)
+WAILS  := $(GOPATH)\bin\wails.exe
 MKDIR   = if not exist "$(1)" mkdir "$(1)"
 RMDIR   = if exist "$(1)" rmdir /s /q "$(1)"
 else
+WAILS  := wails
 MKDIR   = mkdir -p $(1)
 RMDIR   = rm -rf $(1)
 endif
@@ -84,7 +87,7 @@ be-lint:
 # Wails (full app)
 # --------------------------------------------------
 dev:
-	wails dev
+	$(WAILS) dev
 
 wails-build:
-	wails build
+	$(WAILS) build
