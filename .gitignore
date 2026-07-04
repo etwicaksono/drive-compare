@@ -1,0 +1,26 @@
+# Build output
+build/bin
+temp/
+
+# Frontend
+frontend/node_modules
+frontend/dist
+frontend/package.json.md5
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini

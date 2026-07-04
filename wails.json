@@ -1,0 +1,13 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "personal-digital-inventory",
+  "outputfilename": "personal-digital-inventory",
+  "frontend:install": "npm install",
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "auto",
+  "author": {
+    "name": "Eko Teguh Wicaksono",
+    "email": "ekoteguhwicaksono@gmail.com"
+  }
+}
