@@ -3,6 +3,9 @@ import {
   GetDriveConnectionStatus,
   ConnectGoogleDrive,
   DisconnectGoogleDrive,
+  GetIgnorePatterns,
+  AddIgnorePattern,
+  RemoveIgnorePattern,
 } from '../../wailsjs/go/main/App';
 
 function SettingsPage(): React.JSX.Element {
@@ -10,6 +13,7 @@ function SettingsPage(): React.JSX.Element {
     <div className="flex flex-col gap-6">
       <h1 className="text-xl font-semibold">Settings</h1>
       <GoogleDriveSection />
+      <IgnorePatternsSection />
     </div>
   );
 }
@@ -80,6 +84,100 @@ function GoogleDriveSection(): React.JSX.Element {
             </button>
           )
         )}
+      </div>
+    </div>
+  );
+}
+
+function IgnorePatternsSection(): React.JSX.Element {
+  const [patterns, setPatterns] = useState<string[]>([]);
+  const [newPattern, setNewPattern] = useState('');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    GetIgnorePatterns()
+      .then((p) => setPatterns(p ?? []))
+      .catch(() => setPatterns([]));
+  }, []);
+
+  async function handleAdd(): Promise<void> {
+    const trimmed = newPattern.trim();
+    if (trimmed === '') {
+      setError('Pattern cannot be empty');
+      return;
+    }
+    try {
+      await AddIgnorePattern(trimmed);
+      setPatterns((prev) => [...prev, trimmed]);
+      setNewPattern('');
+      setError('');
+    } catch (err) {
+      setError(String(err));
+    }
+  }
+
+  async function handleRemove(pattern: string): Promise<void> {
+    try {
+      await RemoveIgnorePattern(pattern);
+      setPatterns((prev) => prev.filter((p) => p !== pattern));
+    } catch (err) {
+      console.error('Failed to remove pattern:', err);
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent): void {
+    if (e.key === 'Enter') {
+      handleAdd();
+    }
+  }
+
+  return (
+    <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-5">
+      <h2 className="mb-4 text-sm font-semibold text-neutral-300 uppercase tracking-wide">
+        Ignore Patterns
+      </h2>
+
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2">
+          {patterns.map((pattern) => (
+            <div
+              key={pattern}
+              className="flex items-center justify-between rounded-md bg-neutral-800 px-3 py-2"
+            >
+              <code className="text-sm text-neutral-300">{pattern}</code>
+              <button
+                type="button"
+                onClick={() => handleRemove(pattern)}
+                className="text-xs text-neutral-500 transition-colors hover:text-red-400"
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+          {patterns.length === 0 && (
+            <p className="text-sm text-neutral-500">No ignore patterns configured.</p>
+          )}
+        </div>
+
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={newPattern}
+            onChange={(e) => { setNewPattern(e.target.value); setError(''); }}
+            onKeyDown={handleKeyDown}
+            placeholder="e.g. node_modules, *.tmp, .git"
+            className="flex-1 rounded-md border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm text-white placeholder-neutral-500 outline-none focus:border-blue-500"
+          />
+          <button
+            type="button"
+            onClick={handleAdd}
+            className="rounded-md bg-neutral-700 px-4 py-1.5 text-sm text-neutral-300 transition-colors hover:bg-neutral-600"
+          >
+            + Add Pattern
+          </button>
+        </div>
+
+        {error && <p className="text-xs text-red-400">{error}</p>}
       </div>
     </div>
   );

@@ -125,3 +125,39 @@ func (a *App) DisconnectGoogleDrive() error {
 	}
 	return a.auth.Disconnect()
 }
+
+func (a *App) GetIgnorePatterns() []string {
+	if a.cfg == nil {
+		return nil
+	}
+	return a.cfg.Ignore
+}
+
+func (a *App) AddIgnorePattern(pattern string) error {
+	if a.cfg == nil {
+		return fmt.Errorf("config not loaded")
+	}
+	if pattern == "" {
+		return fmt.Errorf("pattern cannot be empty")
+	}
+	for _, p := range a.cfg.Ignore {
+		if p == pattern {
+			return fmt.Errorf("pattern %q already exists", pattern)
+		}
+	}
+	a.cfg.Ignore = append(a.cfg.Ignore, pattern)
+	return nil
+}
+
+func (a *App) RemoveIgnorePattern(pattern string) error {
+	if a.cfg == nil {
+		return fmt.Errorf("config not loaded")
+	}
+	for i, p := range a.cfg.Ignore {
+		if p == pattern {
+			a.cfg.Ignore = append(a.cfg.Ignore[:i], a.cfg.Ignore[i+1:]...)
+			return nil
+		}
+	}
+	return fmt.Errorf("pattern %q not found", pattern)
+}
