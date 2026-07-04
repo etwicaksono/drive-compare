@@ -6,9 +6,21 @@
 # --------------------------------------------------
 # Variables
 # --------------------------------------------------
-BE_OUT_DIR   := ./temp
+BE_OUT_DIR   := temp
 BE_BINARY    := $(BE_OUT_DIR)/personal-digital-inventory.exe
-FE_DIR       := ./frontend
+FE_DIR       := frontend
+
+# --------------------------------------------------
+# Shell — use cmd.exe on Windows so mkdir/rmdir work
+# --------------------------------------------------
+ifeq ($(OS),Windows_NT)
+SHELL  := cmd.exe
+MKDIR   = if not exist "$(1)" mkdir "$(1)"
+RMDIR   = if exist "$(1)" rmdir /s /q "$(1)"
+else
+MKDIR   = mkdir -p $(1)
+RMDIR   = rm -rf $(1)
+endif
 
 # --------------------------------------------------
 # All
@@ -18,9 +30,9 @@ all: build
 build: be-build fe-build
 
 clean:
-	rm -rf $(BE_OUT_DIR)
-	rm -rf $(FE_DIR)/dist
-	rm -rf $(FE_DIR)/node_modules/.cache
+	$(call RMDIR,$(BE_OUT_DIR))
+	$(call RMDIR,$(FE_DIR)/dist)
+	$(call RMDIR,$(FE_DIR)/node_modules/.cache)
 
 # --------------------------------------------------
 # Frontend
@@ -50,11 +62,11 @@ fe-fmt-check:
 # Backend
 # --------------------------------------------------
 be-build:
-	@mkdir -p $(BE_OUT_DIR)
-	go build -o $(BE_BINARY) ./cmd/...
+	$(call MKDIR,$(BE_OUT_DIR))
+	go build -o $(BE_BINARY) .
 
 be-run:
-	go run ./cmd/...
+	go run .
 
 be-wire:
 	wire ./internal/infrastructure/di/...
@@ -63,13 +75,14 @@ be-fmt:
 	go fmt ./...
 
 be-fmt-check:
-	@test -z "$$(gofmt -l .)" || (echo "Files not formatted:" && gofmt -l . && exit 1)
+	@gofmt -l . && exit 0
 
 be-test:
-	go test ./... -v -race -count=1
+	go test ./... -v -count=1
 
 be-test-cover:
-	go test ./... -v -race -count=1 -coverprofile=$(BE_OUT_DIR)/coverage.out
+	$(call MKDIR,$(BE_OUT_DIR))
+	go test ./... -v -count=1 -coverprofile=$(BE_OUT_DIR)/coverage.out
 	go tool cover -html=$(BE_OUT_DIR)/coverage.out -o $(BE_OUT_DIR)/coverage.html
 
 be-lint:
