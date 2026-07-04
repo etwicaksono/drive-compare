@@ -20,8 +20,8 @@
 - Setiap task dikerjakan di **branch baru** dari `main`.
 - Format nama branch: `task-XXX/short-description` (e.g. `task-001/init-wails-project`).
 - Setelah task selesai dan di-review/disetujui, **squash merge** ke `main`.
-- Hapus branch setelah merge.
-- Jangan push langsung ke `main`.
+- Setelah merge, rename branch lama ke `merged/{nama-branch}` (e.g. `merged/task-001/init-wails-project`).
+- Jangan hapus branch, jangan push langsung ke `main`.
 
 ---
 
