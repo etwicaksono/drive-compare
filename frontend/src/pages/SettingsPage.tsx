@@ -7,6 +7,12 @@ import {
   AddIgnorePattern,
   RemoveIgnorePattern,
 } from '../../wailsjs/go/main/App';
+import ErrorBanner from '../components/ErrorBanner';
+
+function formatError(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  return String(err);
+}
 
 function SettingsPage(): React.JSX.Element {
   return (
@@ -21,6 +27,7 @@ function SettingsPage(): React.JSX.Element {
 function GoogleDriveSection(): React.JSX.Element {
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     GetDriveConnectionStatus()
@@ -31,19 +38,23 @@ function GoogleDriveSection(): React.JSX.Element {
 
   async function handleConnect(): Promise<void> {
     try {
+      setError('');
       const url = await ConnectGoogleDrive();
-      window.open(url, '_blank');
+      if (url) {
+        window.open(url, '_blank');
+      }
     } catch (err) {
-      console.error('Failed to start OAuth flow:', err);
+      setError(`Failed to start Google Drive connection: ${formatError(err)}`);
     }
   }
 
   async function handleDisconnect(): Promise<void> {
     try {
+      setError('');
       await DisconnectGoogleDrive();
       setConnected(false);
     } catch (err) {
-      console.error('Failed to disconnect:', err);
+      setError(`Failed to disconnect Google Drive: ${formatError(err)}`);
     }
   }
 
@@ -52,6 +63,8 @@ function GoogleDriveSection(): React.JSX.Element {
       <h2 className="mb-4 text-sm font-semibold text-neutral-300 uppercase tracking-wide">
         Google Drive
       </h2>
+
+      {error && <div className="mb-3"><ErrorBanner message={error} onDismiss={() => setError('')} /></div>}
 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -103,7 +116,7 @@ function IgnorePatternsSection(): React.JSX.Element {
   async function handleAdd(): Promise<void> {
     const trimmed = newPattern.trim();
     if (trimmed === '') {
-      setError('Pattern cannot be empty');
+      setError('Pattern cannot be empty.');
       return;
     }
     try {
@@ -112,16 +125,17 @@ function IgnorePatternsSection(): React.JSX.Element {
       setNewPattern('');
       setError('');
     } catch (err) {
-      setError(String(err));
+      setError(`Failed to add pattern: ${formatError(err)}`);
     }
   }
 
   async function handleRemove(pattern: string): Promise<void> {
     try {
+      setError('');
       await RemoveIgnorePattern(pattern);
       setPatterns((prev) => prev.filter((p) => p !== pattern));
     } catch (err) {
-      console.error('Failed to remove pattern:', err);
+      setError(`Failed to remove pattern: ${formatError(err)}`);
     }
   }
 
@@ -136,6 +150,8 @@ function IgnorePatternsSection(): React.JSX.Element {
       <h2 className="mb-4 text-sm font-semibold text-neutral-300 uppercase tracking-wide">
         Ignore Patterns
       </h2>
+
+      {error && <div className="mb-3"><ErrorBanner message={error} onDismiss={() => setError('')} /></div>}
 
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-2">
@@ -176,8 +192,6 @@ function IgnorePatternsSection(): React.JSX.Element {
             + Add Pattern
           </button>
         </div>
-
-        {error && <p className="text-xs text-red-400">{error}</p>}
       </div>
     </div>
   );

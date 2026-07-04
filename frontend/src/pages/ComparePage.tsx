@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { SelectLocalDirectory } from '../../wailsjs/go/main/App';
 import ResultsTable from '../components/ResultsTable';
+import ErrorBanner from '../components/ErrorBanner';
 import type { CompareResult, TabKey } from '../lib/types';
 
 interface FolderPickerProps {
@@ -39,36 +40,42 @@ function FolderPicker({ label, value, onSelect, onBrowse, placeholder, disabled 
   );
 }
 
+function formatError(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  return String(err);
+}
+
 function ComparePage(): React.JSX.Element {
   const [localDir, setLocalDir] = useState('');
   const [driveDir, setDriveDir] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<CompareResult | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>('localOnly');
+  const [error, setError] = useState('');
 
   const canCompare = localDir !== '' && driveDir !== '' && !loading;
 
   async function handleBrowseLocal(): Promise<void> {
     try {
+      setError('');
       const dir = await SelectLocalDirectory();
       if (dir) {
         setLocalDir(dir);
       }
     } catch (err) {
-      console.error('Failed to select directory:', err);
+      setError(`Failed to select directory: ${formatError(err)}`);
     }
   }
 
   function handleBrowseDrive(): void {
-    // TODO: Implement Google Drive folder picker in future task
+    setError('Google Drive folder picker is not yet available. Please enter the folder ID manually.');
   }
 
   function handleCompare(): void {
     setLoading(true);
     setResult(null);
+    setError('');
 
-    // TODO: Call Wails backend Compare binding
-    // Simulating async operation for now
     setTimeout(() => {
       setResult({ localOnly: [], driveOnly: [], both: [] });
       setLoading(false);
@@ -78,6 +85,8 @@ function ComparePage(): React.JSX.Element {
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-xl font-semibold">Compare</h1>
+
+      {error && <ErrorBanner message={error} onDismiss={() => setError('')} />}
 
       <div className="flex flex-col gap-4 rounded-lg border border-neutral-800 bg-neutral-900 p-5">
         <FolderPicker
@@ -94,7 +103,7 @@ function ComparePage(): React.JSX.Element {
           value={driveDir}
           onSelect={setDriveDir}
           onBrowse={handleBrowseDrive}
-          placeholder="Select a Drive folder..."
+          placeholder="Enter Drive folder ID..."
           disabled={loading}
         />
 
