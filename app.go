@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 
+	"personal-digital-inventory/internal/infrastructure/config"
 	"personal-digital-inventory/internal/infrastructure/database"
 
 	"gorm.io/gorm"
@@ -13,6 +14,7 @@ import (
 type App struct {
 	ctx context.Context
 	db  *gorm.DB
+	cfg *config.Config
 }
 
 func NewApp() *App {
@@ -22,13 +24,21 @@ func NewApp() *App {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
+	cfg, err := config.Load("config.yaml")
+	if err != nil {
+		log.Printf("WARNING: Failed to load config: %v", err)
+		log.Println("The application will start with limited functionality.")
+		return
+	}
+	a.cfg = cfg
+
 	dbCfg := database.Config{
-		Host:     "localhost",
-		Port:     5432,
-		User:     "inventory",
-		Password: "",
-		DBName:   "personal_digital_inventory",
-		SSLMode:  "disable",
+		Host:     cfg.Database.Host,
+		Port:     cfg.Database.Port,
+		User:     cfg.Database.User,
+		Password: cfg.Database.Password,
+		DBName:   cfg.Database.Name,
+		SSLMode:  cfg.Database.SSLMode,
 	}
 
 	db, err := database.Connect(dbCfg)

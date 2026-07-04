@@ -1,0 +1,18 @@
+database:
+  host: localhost
+  port: 5432
+  user: inventory
+  password: ""  # use environment variable PDI_DB_PASSWORD
+  name: personal_digital_inventory
+  sslmode: disable
+
+ignore:
+  - node_modules
+  - .git
+  - Thumbs.db
+  - desktop.ini
+  - "*.tmp"
+  - "*.cache"
+
+logging:
+  level: info  # debug | info | warn | error
