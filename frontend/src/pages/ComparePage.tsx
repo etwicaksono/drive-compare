@@ -4,42 +4,6 @@ import ResultsTable from '../components/ResultsTable';
 import ErrorBanner from '../components/ErrorBanner';
 import type { CompareResult, TabKey } from '../lib/types';
 
-interface FolderPickerProps {
-  label: string;
-  value: string;
-  onSelect: (path: string) => void;
-  onBrowse: () => void;
-  placeholder: string;
-  disabled: boolean;
-}
-
-function FolderPicker({ label, value, onSelect, onBrowse, placeholder, disabled }: FolderPickerProps): React.JSX.Element {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-sm font-medium text-neutral-300">{label}</label>
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => onSelect(e.target.value)}
-          placeholder={placeholder}
-          className="flex-1 rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-500 outline-none focus:border-blue-500 disabled:opacity-50"
-          readOnly
-          disabled={disabled}
-        />
-        <button
-          type="button"
-          onClick={onBrowse}
-          disabled={disabled}
-          className="rounded-md border border-neutral-700 bg-neutral-800 px-4 py-2 text-sm text-neutral-300 transition-colors hover:bg-neutral-700 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          Browse
-        </button>
-      </div>
-    </div>
-  );
-}
-
 function formatError(err: unknown): string {
   if (err instanceof Error) return err.message;
   return String(err);
@@ -67,10 +31,6 @@ function ComparePage(): React.JSX.Element {
     }
   }
 
-  function handleBrowseDrive(): void {
-    setError('Google Drive folder picker is not yet available. Please enter the folder ID manually.');
-  }
-
   function handleCompare(): void {
     setLoading(true);
     setResult(null);
@@ -89,23 +49,42 @@ function ComparePage(): React.JSX.Element {
       {error && <ErrorBanner message={error} onDismiss={() => setError('')} />}
 
       <div className="flex flex-col gap-4 rounded-lg border border-neutral-800 bg-neutral-900 p-5">
-        <FolderPicker
-          label="Local Directory"
-          value={localDir}
-          onSelect={setLocalDir}
-          onBrowse={handleBrowseLocal}
-          placeholder="Select a local folder..."
-          disabled={loading}
-        />
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-neutral-300">Local Directory</label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={localDir}
+              placeholder="Select a local folder..."
+              className="flex-1 rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-500 outline-none focus:border-blue-500 disabled:opacity-50"
+              readOnly
+              disabled={loading}
+            />
+            <button
+              type="button"
+              onClick={handleBrowseLocal}
+              disabled={loading}
+              className="rounded-md border border-neutral-700 bg-neutral-800 px-4 py-2 text-sm text-neutral-300 transition-colors hover:bg-neutral-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Browse
+            </button>
+          </div>
+        </div>
 
-        <FolderPicker
-          label="Google Drive Directory"
-          value={driveDir}
-          onSelect={setDriveDir}
-          onBrowse={handleBrowseDrive}
-          placeholder="Enter Drive folder ID..."
-          disabled={loading}
-        />
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-neutral-300">Google Drive Folder ID</label>
+          <input
+            type="text"
+            value={driveDir}
+            onChange={(e) => setDriveDir(e.target.value)}
+            placeholder="e.g. 1AbC2dEfG3hIjKlMnOpQrStUvWxYz"
+            className="rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-500 outline-none focus:border-blue-500 disabled:opacity-50"
+            disabled={loading}
+          />
+          <p className="text-xs text-neutral-500">
+            Open the folder in Google Drive, then copy the ID from the URL: drive.google.com/drive/folders/<span className="text-neutral-400">{'<folder-id>'}</span>
+          </p>
+        </div>
 
         <button
           type="button"
