@@ -1,6 +1,7 @@
 package scanner
 
 import (
+	"context"
 	"fmt"
 	"io/fs"
 	"path/filepath"
@@ -17,7 +18,7 @@ func NewLocalScanner(ignorePatterns []string) *LocalScanner {
 	return &LocalScanner{ignorePatterns: ignorePatterns}
 }
 
-func (s *LocalScanner) Scan(rootDir string) ([]domain.FileItem, error) {
+func (s *LocalScanner) Scan(ctx context.Context, rootDir string) ([]domain.FileItem, error) {
 	absRoot, err := filepath.Abs(rootDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve absolute path for %q: %w", rootDir, err)
@@ -26,6 +27,10 @@ func (s *LocalScanner) Scan(rootDir string) ([]domain.FileItem, error) {
 	var items []domain.FileItem
 
 	err = filepath.WalkDir(absRoot, func(path string, d fs.DirEntry, err error) error {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+
 		if err != nil {
 			return fmt.Errorf("error accessing %q: %w", path, err)
 		}

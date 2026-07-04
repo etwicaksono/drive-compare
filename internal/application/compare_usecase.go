@@ -8,7 +8,7 @@ import (
 	"personal-digital-inventory/internal/domain"
 )
 
-type LocalScannerFunc func(rootDir string) ([]domain.FileItem, error)
+type LocalScannerFunc func(ctx context.Context, rootDir string) ([]domain.FileItem, error)
 type DriveScannerFunc func(ctx context.Context, folderID string) ([]domain.FileItem, error)
 
 type CompareUseCase struct {
@@ -54,7 +54,7 @@ func (uc *CompareUseCase) Execute(ctx context.Context, input CompareInput) (*Com
 
 	startedAt := time.Now()
 
-	localFiles, err := uc.localScan(input.LocalPath)
+	localFiles, err := uc.localScan(ctx, input.LocalPath)
 	if err != nil {
 		return nil, fmt.Errorf("local scan failed: %w", err)
 	}

@@ -51,7 +51,7 @@ func (m *mockComparisonRepo) ListFilesByComparisonID(ctx context.Context, compar
 func TestCompareUseCase_Success(t *testing.T) {
 	repo := &mockComparisonRepo{}
 
-	localScan := func(rootDir string) ([]domain.FileItem, error) {
+	localScan := func(ctx context.Context, rootDir string) ([]domain.FileItem, error) {
 		return []domain.FileItem{
 			{RelativePath: "", Name: "shared", Extension: ".txt", Size: 100},
 			{RelativePath: "", Name: "local_only", Extension: ".doc", Size: 200},
@@ -124,7 +124,7 @@ func TestCompareUseCase_EmptyDrivePath(t *testing.T) {
 }
 
 func TestCompareUseCase_LocalScanError(t *testing.T) {
-	localScan := func(rootDir string) ([]domain.FileItem, error) {
+	localScan := func(ctx context.Context, rootDir string) ([]domain.FileItem, error) {
 		return nil, fmt.Errorf("directory not found")
 	}
 	driveScan := func(ctx context.Context, folderID string) ([]domain.FileItem, error) {
@@ -143,7 +143,7 @@ func TestCompareUseCase_LocalScanError(t *testing.T) {
 }
 
 func TestCompareUseCase_DriveScanError(t *testing.T) {
-	localScan := func(rootDir string) ([]domain.FileItem, error) {
+	localScan := func(ctx context.Context, rootDir string) ([]domain.FileItem, error) {
 		return nil, nil
 	}
 	driveScan := func(ctx context.Context, folderID string) ([]domain.FileItem, error) {
@@ -163,7 +163,7 @@ func TestCompareUseCase_DriveScanError(t *testing.T) {
 
 func TestCompareUseCase_RepoCreateError(t *testing.T) {
 	repo := &mockComparisonRepo{createErr: fmt.Errorf("db error")}
-	localScan := func(rootDir string) ([]domain.FileItem, error) { return nil, nil }
+	localScan := func(ctx context.Context, rootDir string) ([]domain.FileItem, error) { return nil, nil }
 	driveScan := func(ctx context.Context, folderID string) ([]domain.FileItem, error) { return nil, nil }
 
 	uc := NewCompareUseCase(repo, localScan, driveScan)
@@ -179,7 +179,7 @@ func TestCompareUseCase_RepoCreateError(t *testing.T) {
 
 func TestCompareUseCase_RepoSaveFilesError(t *testing.T) {
 	repo := &mockComparisonRepo{saveErr: fmt.Errorf("db error")}
-	localScan := func(rootDir string) ([]domain.FileItem, error) {
+	localScan := func(ctx context.Context, rootDir string) ([]domain.FileItem, error) {
 		return []domain.FileItem{{RelativePath: "", Name: "a", Extension: ".txt", Size: 1}}, nil
 	}
 	driveScan := func(ctx context.Context, folderID string) ([]domain.FileItem, error) { return nil, nil }

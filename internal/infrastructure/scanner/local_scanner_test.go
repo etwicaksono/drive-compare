@@ -1,6 +1,7 @@
 package scanner
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -22,7 +23,7 @@ func TestLocalScanner_EmptyDirectory(t *testing.T) {
 	dir := t.TempDir()
 
 	s := NewLocalScanner(nil)
-	items, err := s.Scan(dir)
+	items, err := s.Scan(context.Background(), dir)
 	if err != nil {
 		t.Fatalf("Scan() error: %v", err)
 	}
@@ -37,7 +38,7 @@ func TestLocalScanner_SingleFile(t *testing.T) {
 	createFile(t, filepath.Join(dir, "photo.jpg"), 1024)
 
 	s := NewLocalScanner(nil)
-	items, err := s.Scan(dir)
+	items, err := s.Scan(context.Background(), dir)
 	if err != nil {
 		t.Fatalf("Scan() error: %v", err)
 	}
@@ -69,7 +70,7 @@ func TestLocalScanner_NestedDirectories(t *testing.T) {
 	createFile(t, filepath.Join(dir, "Photos", "DCIM", "img001.png"), 8192)
 
 	s := NewLocalScanner(nil)
-	items, err := s.Scan(dir)
+	items, err := s.Scan(context.Background(), dir)
 	if err != nil {
 		t.Fatalf("Scan() error: %v", err)
 	}
@@ -117,7 +118,7 @@ func TestLocalScanner_FileWithoutExtension(t *testing.T) {
 	createFile(t, filepath.Join(dir, "Makefile"), 100)
 
 	s := NewLocalScanner(nil)
-	items, err := s.Scan(dir)
+	items, err := s.Scan(context.Background(), dir)
 	if err != nil {
 		t.Fatalf("Scan() error: %v", err)
 	}
@@ -139,7 +140,7 @@ func TestLocalScanner_FileWithMultipleDots(t *testing.T) {
 	createFile(t, filepath.Join(dir, "archive.tar.gz"), 500)
 
 	s := NewLocalScanner(nil)
-	items, err := s.Scan(dir)
+	items, err := s.Scan(context.Background(), dir)
 	if err != nil {
 		t.Fatalf("Scan() error: %v", err)
 	}
@@ -158,7 +159,7 @@ func TestLocalScanner_FileWithMultipleDots(t *testing.T) {
 
 func TestLocalScanner_NonExistentDirectory(t *testing.T) {
 	s := NewLocalScanner(nil)
-	_, err := s.Scan("/nonexistent/path/that/does/not/exist")
+	_, err := s.Scan(context.Background(), "/nonexistent/path/that/does/not/exist")
 	if err == nil {
 		t.Fatal("Scan() should return error for non-existent directory")
 	}
@@ -169,7 +170,7 @@ func TestLocalScanner_ZeroSizeFile(t *testing.T) {
 	createFile(t, filepath.Join(dir, "empty.txt"), 0)
 
 	s := NewLocalScanner(nil)
-	items, err := s.Scan(dir)
+	items, err := s.Scan(context.Background(), dir)
 	if err != nil {
 		t.Fatalf("Scan() error: %v", err)
 	}
@@ -215,7 +216,7 @@ func TestLocalScanner_IgnoreDirectory(t *testing.T) {
 	createFile(t, filepath.Join(dir, ".git", "config"), 50)
 
 	s := NewLocalScanner([]string{"node_modules", ".git"})
-	items, err := s.Scan(dir)
+	items, err := s.Scan(context.Background(), dir)
 	if err != nil {
 		t.Fatalf("Scan() error: %v", err)
 	}
@@ -236,7 +237,7 @@ func TestLocalScanner_IgnoreFileByGlob(t *testing.T) {
 	createFile(t, filepath.Join(dir, "cache.cache"), 30)
 
 	s := NewLocalScanner([]string{"*.tmp", "*.cache"})
-	items, err := s.Scan(dir)
+	items, err := s.Scan(context.Background(), dir)
 	if err != nil {
 		t.Fatalf("Scan() error: %v", err)
 	}
@@ -257,7 +258,7 @@ func TestLocalScanner_IgnoreSpecificFiles(t *testing.T) {
 	createFile(t, filepath.Join(dir, "desktop.ini"), 30)
 
 	s := NewLocalScanner([]string{"Thumbs.db", "desktop.ini"})
-	items, err := s.Scan(dir)
+	items, err := s.Scan(context.Background(), dir)
 	if err != nil {
 		t.Fatalf("Scan() error: %v", err)
 	}
@@ -277,7 +278,7 @@ func TestLocalScanner_IgnoreNestedMatch(t *testing.T) {
 	createFile(t, filepath.Join(dir, "src", "node_modules", "lib", "index.js"), 200)
 
 	s := NewLocalScanner([]string{"node_modules"})
-	items, err := s.Scan(dir)
+	items, err := s.Scan(context.Background(), dir)
 	if err != nil {
 		t.Fatalf("Scan() error: %v", err)
 	}
@@ -297,7 +298,7 @@ func TestLocalScanner_NoIgnorePatterns(t *testing.T) {
 	createFile(t, filepath.Join(dir, "file.tmp"), 50)
 
 	s := NewLocalScanner(nil)
-	items, err := s.Scan(dir)
+	items, err := s.Scan(context.Background(), dir)
 	if err != nil {
 		t.Fatalf("Scan() error: %v", err)
 	}
@@ -312,7 +313,7 @@ func TestLocalScanner_EmptyIgnorePatterns(t *testing.T) {
 	createFile(t, filepath.Join(dir, "file.txt"), 10)
 
 	s := NewLocalScanner([]string{})
-	items, err := s.Scan(dir)
+	items, err := s.Scan(context.Background(), dir)
 	if err != nil {
 		t.Fatalf("Scan() error: %v", err)
 	}
@@ -343,5 +344,20 @@ func TestShouldIgnore(t *testing.T) {
 		if got != tt.want {
 			t.Errorf("shouldIgnore(%q) = %v, want %v", tt.name, got, tt.want)
 		}
+	}
+}
+
+func TestLocalScanner_CancelledContext(t *testing.T) {
+	dir := t.TempDir()
+	createFile(t, filepath.Join(dir, "file1.txt"), 10)
+	createFile(t, filepath.Join(dir, "file2.txt"), 20)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	s := NewLocalScanner(nil)
+	_, err := s.Scan(ctx, dir)
+	if err == nil {
+		t.Fatal("Scan() should return error for cancelled context")
 	}
 }
