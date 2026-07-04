@@ -176,6 +176,7 @@ Laporan Tabel
 | UI Library      | Tailwind CSS + shadcn/ui            |
 | Database        | PostgreSQL                          |
 | ORM             | GORM                                |
+| DI              | Google Wire                         |
 | Migration       | goose                               |
 | Configuration   | YAML                                |
 | Logging         | log/slog (Go standard library)      |

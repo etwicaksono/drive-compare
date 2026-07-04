@@ -56,6 +56,9 @@ be-build:
 be-run:
 	go run ./cmd/...
 
+be-wire:
+	wire ./internal/infrastructure/di/...
+
 be-fmt:
 	go fmt ./...
 
