@@ -9,9 +9,16 @@ import (
 )
 
 type Config struct {
-	Database DatabaseConfig `yaml:"database"`
-	Ignore   []string       `yaml:"ignore"`
-	Logging  LoggingConfig  `yaml:"logging"`
+	Database    DatabaseConfig    `yaml:"database"`
+	GoogleDrive GoogleDriveConfig `yaml:"google_drive"`
+	Ignore      []string          `yaml:"ignore"`
+	Logging     LoggingConfig     `yaml:"logging"`
+}
+
+type GoogleDriveConfig struct {
+	ClientID     string `yaml:"client_id"`
+	ClientSecret string `yaml:"client_secret"`
+	TokenFile    string `yaml:"token_file"`
 }
 
 type DatabaseConfig struct {
@@ -51,6 +58,12 @@ func applyEnvOverrides(cfg *Config) {
 	if pw := os.Getenv("PDI_DB_PASSWORD"); pw != "" {
 		cfg.Database.Password = pw
 	}
+	if id := os.Getenv("PDI_GOOGLE_CLIENT_ID"); id != "" {
+		cfg.GoogleDrive.ClientID = id
+	}
+	if secret := os.Getenv("PDI_GOOGLE_CLIENT_SECRET"); secret != "" {
+		cfg.GoogleDrive.ClientSecret = secret
+	}
 }
 
 func validate(cfg *Config) error {
@@ -78,6 +91,10 @@ func validate(cfg *Config) error {
 	}
 	if !validLevels[cfg.Logging.Level] {
 		errs = append(errs, fmt.Sprintf("logging.level must be one of: debug, info, warn, error (got %q)", cfg.Logging.Level))
+	}
+
+	if cfg.GoogleDrive.TokenFile == "" {
+		cfg.GoogleDrive.TokenFile = "token.json"
 	}
 
 	if len(errs) > 0 {

@@ -24,3 +24,6 @@ frontend/package.json.md5
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Secrets
+token.json

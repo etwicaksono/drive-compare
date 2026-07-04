@@ -6,6 +6,11 @@ database:
   name: personal_digital_inventory
   sslmode: disable
 
+google_drive:
+  client_id: ""      # use environment variable PDI_GOOGLE_CLIENT_ID
+  client_secret: ""  # use environment variable PDI_GOOGLE_CLIENT_SECRET
+  token_file: token.json
+
 ignore:
   - node_modules
   - .git
