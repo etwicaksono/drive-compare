@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { SelectLocalDirectory } from '../../wailsjs/go/main/App';
+import { SelectLocalDirectory, RunComparison } from '../../wailsjs/go/main/App';
 import ResultsTable from '../components/ResultsTable';
 import ErrorBanner from '../components/ErrorBanner';
 import DriveFolderPicker from '../components/DriveFolderPicker';
@@ -40,15 +40,23 @@ function ComparePage(): React.JSX.Element {
     setShowDrivePicker(false);
   }
 
-  function handleCompare(): void {
+  async function handleCompare(): Promise<void> {
     setLoading(true);
     setResult(null);
     setError('');
 
-    setTimeout(() => {
-      setResult({ localOnly: [], driveOnly: [], both: [] });
+    try {
+      const resp = await RunComparison(localDir, driveDir);
+      setResult({
+        localOnly: resp.localOnly ?? [],
+        driveOnly: resp.driveOnly ?? [],
+        both: resp.both ?? [],
+      });
+    } catch (err) {
+      setError(`Comparison failed: ${formatError(err)}`);
+    } finally {
       setLoading(false);
-    }, 100);
+    }
   }
 
   return (

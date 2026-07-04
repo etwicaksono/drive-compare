@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"personal-digital-inventory/internal/domain"
 	"personal-digital-inventory/internal/infrastructure/config"
 	"personal-digital-inventory/internal/infrastructure/database"
 	"personal-digital-inventory/internal/infrastructure/gdrive"
@@ -215,4 +216,87 @@ func (a *App) ListDriveFolders(parentID string) ([]DriveFolder, error) {
 	}
 
 	return folders, nil
+}
+
+type CompareResultItem struct {
+	RelativePath string `json:"relativePath"`
+	Name         string `json:"name"`
+	Extension    string `json:"extension"`
+	Size         int64  `json:"size"`
+}
+
+type CompareResponse struct {
+	LocalOnly []CompareResultItem `json:"localOnly"`
+	DriveOnly []CompareResultItem `json:"driveOnly"`
+	Both      []CompareResultItem `json:"both"`
+}
+
+func (a *App) RunComparison(localPath string, driveFolderID string) (*CompareResponse, error) {
+	if localPath == "" {
+		return nil, fmt.Errorf("local directory is required")
+	}
+	if driveFolderID == "" {
+		return nil, fmt.Errorf("Google Drive folder is required")
+	}
+	if a.auth == nil {
+		return nil, fmt.Errorf("Google Drive not configured")
+	}
+	if !a.auth.IsConnected() {
+		return nil, fmt.Errorf("Google Drive not connected. Please connect in Settings first.")
+	}
+
+	slog.Info("Starting comparison", "localPath", localPath, "driveFolderID", driveFolderID)
+
+	localScanner := scanner.NewLocalScanner(a.cfg.Ignore)
+	localFiles, err := localScanner.Scan(a.ctx, localPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to scan local directory: %w", err)
+	}
+	slog.Info("Local scan complete", "files", len(localFiles))
+
+	client, err := a.auth.GetClient(a.ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Drive client: %w", err)
+	}
+
+	api, err := scanner.NewRealDriveAPI(client)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Drive API: %w", err)
+	}
+
+	driveScanner := scanner.NewDriveScanner(api, a.cfg.Ignore)
+	driveFiles, err := driveScanner.Scan(a.ctx, driveFolderID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to scan Google Drive: %w", err)
+	}
+	slog.Info("Drive scan complete", "files", len(driveFiles))
+
+	result := domain.CompareFiles(localFiles, driveFiles)
+
+	resp := &CompareResponse{
+		LocalOnly: toResultItems(result.LocalOnly),
+		DriveOnly: toResultItems(result.DriveOnly),
+		Both:      toResultItems(result.Both),
+	}
+
+	slog.Info("Comparison complete",
+		"localOnly", len(resp.LocalOnly),
+		"driveOnly", len(resp.DriveOnly),
+		"both", len(resp.Both),
+	)
+
+	return resp, nil
+}
+
+func toResultItems(items []domain.FileItem) []CompareResultItem {
+	result := make([]CompareResultItem, len(items))
+	for i, item := range items {
+		result[i] = CompareResultItem{
+			RelativePath: item.RelativePath,
+			Name:         item.Name,
+			Extension:    item.Extension,
+			Size:         item.Size,
+		}
+	}
+	return result
 }
