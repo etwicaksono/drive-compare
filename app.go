@@ -53,6 +53,18 @@ func (a *App) startup(ctx context.Context) {
 
 	a.db = db
 	slog.Info("Database connected successfully")
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		slog.Error("Failed to get underlying sql.DB for migrations", "error", err)
+		return
+	}
+
+	if err := database.RunMigrations(sqlDB); err != nil {
+		slog.Error("Failed to run database migrations", "error", err)
+		return
+	}
+	slog.Info("Database migrations completed")
 }
 
 func (a *App) shutdown(ctx context.Context) {
