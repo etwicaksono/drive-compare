@@ -3,10 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 
 	"personal-digital-inventory/internal/infrastructure/config"
 	"personal-digital-inventory/internal/infrastructure/database"
+	"personal-digital-inventory/internal/infrastructure/logging"
 
 	"gorm.io/gorm"
 )
@@ -26,11 +27,14 @@ func (a *App) startup(ctx context.Context) {
 
 	cfg, err := config.Load("config.yaml")
 	if err != nil {
-		log.Printf("WARNING: Failed to load config: %v", err)
-		log.Println("The application will start with limited functionality.")
+		slog.Warn("Failed to load config, starting with limited functionality", "error", err)
 		return
 	}
 	a.cfg = cfg
+
+	if err := logging.Setup(cfg.Logging.Level); err != nil {
+		slog.Warn("Failed to configure logging", "error", err)
+	}
 
 	dbCfg := database.Config{
 		Host:     cfg.Database.Host,
@@ -43,19 +47,18 @@ func (a *App) startup(ctx context.Context) {
 
 	db, err := database.Connect(dbCfg)
 	if err != nil {
-		log.Printf("WARNING: Database connection failed: %v", err)
-		log.Println("The application will start without database connectivity.")
+		slog.Warn("Database connection failed, starting without database connectivity", "error", err)
 		return
 	}
 
 	a.db = db
-	log.Println("Database connected successfully.")
+	slog.Info("Database connected successfully")
 }
 
 func (a *App) shutdown(ctx context.Context) {
 	if a.db != nil {
 		if err := database.Close(a.db); err != nil {
-			log.Printf("Error closing database: %v", err)
+			slog.Error("Failed to close database", "error", err)
 		}
 	}
 }
