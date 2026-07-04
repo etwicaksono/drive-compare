@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import type { FileItem, TabKey, CompareResult } from '../lib/types';
 import { formatSize } from '../lib/types';
 
@@ -78,11 +78,15 @@ function SortIndicator({ field, sort }: { field: SortField; sort: SortState }): 
   return <span className="ml-1">{sort.direction === 'asc' ? '▲' : '▼'}</span>;
 }
 
+const BATCH_SIZE = 50;
+
 function ResultsTable({ result, activeTab, onTabChange }: ResultsTableProps): React.JSX.Element {
   const [sort, setSort] = useState<SortState>({ field: 'name', direction: 'asc' });
   const [search, setSearch] = useState('');
   const [selectedExtensions, setSelectedExtensions] = useState<Set<string>>(new Set());
   const [sizeRangeIndex, setSizeRangeIndex] = useState(0);
+  const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const items = result[activeTab];
 
@@ -100,6 +104,23 @@ function ResultsTable({ result, activeTab, onTabChange }: ResultsTableProps): Re
   );
 
   const sorted = useMemo(() => sortItems(filtered, sort), [filtered, sort]);
+
+  const visible = useMemo(() => sorted.slice(0, visibleCount), [sorted, visibleCount]);
+  const hasMore = visibleCount < sorted.length;
+
+  useEffect(() => {
+    setVisibleCount(BATCH_SIZE);
+  }, [activeTab, search, selectedExtensions, sizeRangeIndex, sort]);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el || !hasMore) return;
+
+    const threshold = 200;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < threshold) {
+      setVisibleCount((prev) => Math.min(prev + BATCH_SIZE, sorted.length));
+    }
+  }, [hasMore, sorted.length]);
 
   function handleSort(field: SortField): void {
     setSort((prev) => ({
@@ -195,7 +216,7 @@ function ResultsTable({ result, activeTab, onTabChange }: ResultsTableProps): Re
         </span>
       </div>
 
-      <div className="overflow-auto">
+      <div className="overflow-auto" ref={scrollRef} onScroll={handleScroll} style={{ maxHeight: '60vh' }}>
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-neutral-800 text-neutral-400">
@@ -213,14 +234,14 @@ function ResultsTable({ result, activeTab, onTabChange }: ResultsTableProps): Re
             </tr>
           </thead>
           <tbody>
-            {sorted.length === 0 ? (
+            {visible.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-4 py-8 text-center text-neutral-500">
                   No files found.
                 </td>
               </tr>
             ) : (
-              sorted.map((item: FileItem, index: number) => (
+              visible.map((item: FileItem, index: number) => (
                 <tr
                   key={`${item.relativePath}${item.name}${item.extension}`}
                   className="border-b border-neutral-800/50 hover:bg-neutral-800/30"
@@ -235,6 +256,12 @@ function ResultsTable({ result, activeTab, onTabChange }: ResultsTableProps): Re
             )}
           </tbody>
         </table>
+        {hasMore && (
+          <div className="flex items-center justify-center gap-2 py-4">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-600 border-t-blue-500" />
+            <span className="text-xs text-neutral-500">Loading more...</span>
+          </div>
+        )}
       </div>
     </div>
   );
