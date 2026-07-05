@@ -90,6 +90,7 @@ function ResultsTable({ result, activeTab, onTabChange, selectedKeys, onSelectio
   const [sizeRangeIndex, setSizeRangeIndex] = useState(0);
   const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const lastClickedIndex = useRef<number>(-1);
 
   const items = result[activeTab];
 
@@ -156,14 +157,36 @@ function ResultsTable({ result, activeTab, onTabChange, selectedKeys, onSelectio
     });
   }
 
-  function toggleItem(key: string): void {
-    const next = new Set(selectedKeys);
-    if (next.has(key)) {
-      next.delete(key);
+  function handleItemClick(index: number, e: React.MouseEvent): void {
+    const key = getItemKey(sorted[index]);
+
+    if (e.shiftKey && lastClickedIndex.current >= 0) {
+      const start = Math.min(lastClickedIndex.current, index);
+      const end = Math.max(lastClickedIndex.current, index);
+      const next = new Set(selectedKeys);
+      for (let i = start; i <= end; i++) {
+        next.add(getItemKey(sorted[i]));
+      }
+      onSelectionChange(next);
+    } else if (e.ctrlKey || e.metaKey) {
+      const next = new Set(selectedKeys);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      onSelectionChange(next);
     } else {
-      next.add(key);
+      const next = new Set(selectedKeys);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      onSelectionChange(next);
     }
-    onSelectionChange(next);
+
+    lastClickedIndex.current = index;
   }
 
   function toggleSelectAll(): void {
@@ -317,7 +340,7 @@ function ResultsTable({ result, activeTab, onTabChange, selectedKeys, onSelectio
                   >
                     <td
                       className="w-14 px-4 py-2.5 cursor-pointer select-none"
-                      onClick={() => toggleItem(key)}
+                      onClick={(e) => handleItemClick(index, e)}
                     >
                       {isSelected ? (
                         <input type="checkbox" checked readOnly className="accent-blue-500 pointer-events-none" />
