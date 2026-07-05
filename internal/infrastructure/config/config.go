@@ -11,7 +11,7 @@ import (
 type Config struct {
 	Database    DatabaseConfig    `yaml:"database"`
 	GoogleDrive GoogleDriveConfig `yaml:"google_drive"`
-	Ignore      []string          `yaml:"ignore"`
+	Ignore      IgnoreConfig      `yaml:"ignore"`
 	Logging     LoggingConfig     `yaml:"logging"`
 }
 
@@ -32,6 +32,11 @@ type DatabaseConfig struct {
 
 type LoggingConfig struct {
 	Level string `yaml:"level"`
+}
+
+type IgnoreConfig struct {
+	Patterns         []string `yaml:"patterns"`
+	RespectGitignore *bool    `yaml:"respect_gitignore"`
 }
 
 func Load(path string) (*Config, error) {
@@ -95,6 +100,11 @@ func validate(cfg *Config) error {
 
 	if cfg.GoogleDrive.TokenFile == "" {
 		cfg.GoogleDrive.TokenFile = "token.json"
+	}
+
+	if cfg.Ignore.RespectGitignore == nil {
+		defaultTrue := true
+		cfg.Ignore.RespectGitignore = &defaultTrue
 	}
 
 	if len(errs) > 0 {

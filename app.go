@@ -136,7 +136,7 @@ func (a *App) GetIgnorePatterns() []string {
 	if a.cfg == nil {
 		return nil
 	}
-	return a.cfg.Ignore
+	return a.cfg.Ignore.Patterns
 }
 
 func (a *App) AddIgnorePattern(pattern string) error {
@@ -146,12 +146,12 @@ func (a *App) AddIgnorePattern(pattern string) error {
 	if pattern == "" {
 		return fmt.Errorf("pattern cannot be empty")
 	}
-	for _, p := range a.cfg.Ignore {
+	for _, p := range a.cfg.Ignore.Patterns {
 		if p == pattern {
 			return fmt.Errorf("pattern %q already exists", pattern)
 		}
 	}
-	a.cfg.Ignore = append(a.cfg.Ignore, pattern)
+	a.cfg.Ignore.Patterns = append(a.cfg.Ignore.Patterns, pattern)
 	return nil
 }
 
@@ -159,9 +159,9 @@ func (a *App) RemoveIgnorePattern(pattern string) error {
 	if a.cfg == nil {
 		return fmt.Errorf("config not loaded")
 	}
-	for i, p := range a.cfg.Ignore {
+	for i, p := range a.cfg.Ignore.Patterns {
 		if p == pattern {
-			a.cfg.Ignore = append(a.cfg.Ignore[:i], a.cfg.Ignore[i+1:]...)
+			a.cfg.Ignore.Patterns = append(a.cfg.Ignore.Patterns[:i], a.cfg.Ignore.Patterns[i+1:]...)
 			return nil
 		}
 	}
@@ -247,7 +247,7 @@ func (a *App) RunComparison(localPath string, driveFolderID string) (*CompareRes
 
 	slog.Info("Starting comparison", "localPath", localPath, "driveFolderID", driveFolderID)
 
-	localScanner := scanner.NewLocalScanner(a.cfg.Ignore)
+	localScanner := scanner.NewLocalScanner(a.cfg.Ignore.Patterns)
 	localFiles, err := localScanner.Scan(a.ctx, localPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to scan local directory: %w", err)
@@ -264,7 +264,7 @@ func (a *App) RunComparison(localPath string, driveFolderID string) (*CompareRes
 		return nil, fmt.Errorf("failed to create Drive API: %w", err)
 	}
 
-	driveScanner := scanner.NewDriveScanner(api, a.cfg.Ignore)
+	driveScanner := scanner.NewDriveScanner(api, a.cfg.Ignore.Patterns)
 	driveFiles, err := driveScanner.Scan(a.ctx, driveFolderID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to scan Google Drive: %w", err)

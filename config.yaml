@@ -12,12 +12,14 @@ google_drive:
   token_file: token.json
 
 ignore:
-  - node_modules
-  - .git
-  - Thumbs.db
-  - desktop.ini
-  - "*.tmp"
-  - "*.cache"
+  patterns:
+    - node_modules
+    - .git
+    - Thumbs.db
+    - desktop.ini
+    - "*.tmp"
+    - "*.cache"
+  respect_gitignore: true
 
 logging:
   level: info  # debug | info | warn | error

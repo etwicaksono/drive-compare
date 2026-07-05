@@ -26,8 +26,10 @@ database:
   name: pdi
   sslmode: disable
 ignore:
-  - node_modules
-  - .git
+  patterns:
+    - node_modules
+    - .git
+  respect_gitignore: false
 logging:
   level: debug
 `
@@ -54,8 +56,11 @@ logging:
 	if cfg.Database.SSLMode != "disable" {
 		t.Errorf("SSLMode = %q, want %q", cfg.Database.SSLMode, "disable")
 	}
-	if len(cfg.Ignore) != 2 {
-		t.Errorf("Ignore length = %d, want 2", len(cfg.Ignore))
+	if len(cfg.Ignore.Patterns) != 2 {
+		t.Errorf("Ignore.Patterns length = %d, want 2", len(cfg.Ignore.Patterns))
+	}
+	if *cfg.Ignore.RespectGitignore != false {
+		t.Errorf("RespectGitignore = %v, want false", *cfg.Ignore.RespectGitignore)
 	}
 	if cfg.Logging.Level != "debug" {
 		t.Errorf("Level = %q, want %q", cfg.Logging.Level, "debug")
@@ -163,7 +168,10 @@ database:
 		t.Fatalf("Load() error: %v", err)
 	}
 
-	if cfg.Ignore != nil && len(cfg.Ignore) != 0 {
-		t.Errorf("Ignore = %v, want empty", cfg.Ignore)
+	if len(cfg.Ignore.Patterns) != 0 {
+		t.Errorf("Ignore.Patterns = %v, want empty", cfg.Ignore.Patterns)
+	}
+	if *cfg.Ignore.RespectGitignore != true {
+		t.Errorf("RespectGitignore = %v, want true (default)", *cfg.Ignore.RespectGitignore)
 	}
 }
