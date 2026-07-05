@@ -240,62 +240,67 @@ type CompareResultItem struct {
 }
 
 type CompareResponse struct {
-	LocalOnly []CompareResultItem `json:"localOnly"`
-	DriveOnly []CompareResultItem `json:"driveOnly"`
-	Both      []CompareResultItem `json:"both"`
+	SourceAOnly []CompareResultItem `json:"sourceAOnly"`
+	SourceBOnly []CompareResultItem `json:"sourceBOnly"`
+	Both        []CompareResultItem `json:"both"`
 }
 
-func (a *App) RunComparison(localPath string, driveFolderID string) (*CompareResponse, error) {
-	if localPath == "" {
-		return nil, fmt.Errorf("local directory is required")
+func (a *App) scanSource(sourceType string, sourceID string) ([]domain.FileItem, error) {
+	switch sourceType {
+	case "local":
+		if sourceID == "" {
+			return nil, fmt.Errorf("local directory is required")
+		}
+		s := scanner.NewLocalScanner(a.cfg.Ignore.Patterns, *a.cfg.Ignore.RespectGitignore)
+		return s.Scan(a.ctx, sourceID)
+	case "drive":
+		if sourceID == "" {
+			return nil, fmt.Errorf("Google Drive folder is required")
+		}
+		if a.auth == nil || !a.auth.IsConnected() {
+			return nil, fmt.Errorf("Google Drive not connected. Please connect in Settings first.")
+		}
+		client, err := a.auth.GetClient(a.ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get Drive client: %w", err)
+		}
+		api, err := scanner.NewRealDriveAPI(client)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create Drive API: %w", err)
+		}
+		s := scanner.NewDriveScanner(api, a.cfg.Ignore.Patterns)
+		return s.Scan(a.ctx, sourceID)
+	default:
+		return nil, fmt.Errorf("invalid source type %q, must be \"local\" or \"drive\"", sourceType)
 	}
-	if driveFolderID == "" {
-		return nil, fmt.Errorf("Google Drive folder is required")
-	}
-	if a.auth == nil {
-		return nil, fmt.Errorf("Google Drive not configured")
-	}
-	if !a.auth.IsConnected() {
-		return nil, fmt.Errorf("Google Drive not connected. Please connect in Settings first.")
-	}
+}
 
-	slog.Info("Starting comparison", "localPath", localPath, "driveFolderID", driveFolderID)
+func (a *App) RunComparison(sourceTypeA string, sourceIDA string, sourceTypeB string, sourceIDB string) (*CompareResponse, error) {
+	slog.Info("Starting comparison", "sourceA", sourceTypeA, "sourceB", sourceTypeB)
 
-	localScanner := scanner.NewLocalScanner(a.cfg.Ignore.Patterns, *a.cfg.Ignore.RespectGitignore)
-	localFiles, err := localScanner.Scan(a.ctx, localPath)
+	filesA, err := a.scanSource(sourceTypeA, sourceIDA)
 	if err != nil {
-		return nil, fmt.Errorf("failed to scan local directory: %w", err)
+		return nil, fmt.Errorf("source A scan failed: %w", err)
 	}
-	slog.Info("Local scan complete", "files", len(localFiles))
+	slog.Info("Source A scan complete", "type", sourceTypeA, "files", len(filesA))
 
-	client, err := a.auth.GetClient(a.ctx)
+	filesB, err := a.scanSource(sourceTypeB, sourceIDB)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get Drive client: %w", err)
+		return nil, fmt.Errorf("source B scan failed: %w", err)
 	}
+	slog.Info("Source B scan complete", "type", sourceTypeB, "files", len(filesB))
 
-	api, err := scanner.NewRealDriveAPI(client)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Drive API: %w", err)
-	}
-
-	driveScanner := scanner.NewDriveScanner(api, a.cfg.Ignore.Patterns)
-	driveFiles, err := driveScanner.Scan(a.ctx, driveFolderID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to scan Google Drive: %w", err)
-	}
-	slog.Info("Drive scan complete", "files", len(driveFiles))
-
-	result := domain.CompareFiles(localFiles, driveFiles)
+	result := domain.CompareFiles(filesA, filesB)
 
 	resp := &CompareResponse{
-		LocalOnly: toResultItems(result.LocalOnly),
-		DriveOnly: toResultItems(result.DriveOnly),
-		Both:      toResultItems(result.Both),
+		SourceAOnly: toResultItems(result.LocalOnly),
+		SourceBOnly: toResultItems(result.DriveOnly),
+		Both:        toResultItems(result.Both),
 	}
 
 	slog.Info("Comparison complete",
-		"localOnly", len(resp.LocalOnly),
-		"driveOnly", len(resp.DriveOnly),
+		"sourceAOnly", len(resp.SourceAOnly),
+		"sourceBOnly", len(resp.SourceBOnly),
 		"both", len(resp.Both),
 	)
 
@@ -393,34 +398,7 @@ func (a *App) RunDuplicateScan(sourceType string, sourceID string, patternIDs []
 		return nil, fmt.Errorf("no valid patterns selected")
 	}
 
-	var files []domain.FileItem
-	var err error
-
-	switch sourceType {
-	case "local":
-		if sourceID == "" {
-			return nil, fmt.Errorf("local directory is required")
-		}
-		s := scanner.NewLocalScanner(a.cfg.Ignore.Patterns, *a.cfg.Ignore.RespectGitignore)
-		files, err = s.Scan(a.ctx, sourceID)
-	case "drive":
-		if a.auth == nil || !a.auth.IsConnected() {
-			return nil, fmt.Errorf("Google Drive not connected. Please connect in Settings first.")
-		}
-		client, cerr := a.auth.GetClient(a.ctx)
-		if cerr != nil {
-			return nil, fmt.Errorf("failed to get Drive client: %w", cerr)
-		}
-		api, aerr := scanner.NewRealDriveAPI(client)
-		if aerr != nil {
-			return nil, fmt.Errorf("failed to create Drive API: %w", aerr)
-		}
-		s := scanner.NewDriveScanner(api, a.cfg.Ignore.Patterns)
-		files, err = s.Scan(a.ctx, sourceID)
-	default:
-		return nil, fmt.Errorf("invalid source type %q, must be \"local\" or \"drive\"", sourceType)
-	}
-
+	files, err := a.scanSource(sourceType, sourceID)
 	if err != nil {
 		return nil, fmt.Errorf("scan failed: %w", err)
 	}

@@ -9,13 +9,8 @@ interface ResultsTableProps {
   selectedKeys: Set<string>;
   onSelectionChange: (keys: Set<string>) => void;
   onExport: () => void;
+  tabLabels: Record<TabKey, string>;
 }
-
-const TAB_LABELS: Record<TabKey, string> = {
-  localOnly: 'Local Only',
-  driveOnly: 'Drive Only',
-  both: 'Both',
-};
 
 type SortField = 'name' | 'extension' | 'size' | 'relativePath';
 type SortDirection = 'asc' | 'desc';
@@ -83,7 +78,7 @@ function SortIndicator({ field, sort }: { field: SortField; sort: SortState }): 
 
 const BATCH_SIZE = 50;
 
-function ResultsTable({ result, activeTab, onTabChange, selectedKeys, onSelectionChange, onExport }: ResultsTableProps): React.JSX.Element {
+function ResultsTable({ result, activeTab, onTabChange, selectedKeys, onSelectionChange, onExport, tabLabels }: ResultsTableProps): React.JSX.Element {
   const [sort, setSort] = useState<SortState>({ field: 'name', direction: 'asc' });
   const [search, setSearch] = useState('');
   const [selectedExtensions, setSelectedExtensions] = useState<Set<string>>(new Set());
@@ -205,7 +200,7 @@ function ResultsTable({ result, activeTab, onTabChange, selectedKeys, onSelectio
   return (
     <div className="flex flex-col gap-0 rounded-lg border border-neutral-800 bg-neutral-900">
       <div className="flex border-b border-neutral-800">
-        {(Object.keys(TAB_LABELS) as TabKey[]).map((key) => (
+        {(Object.keys(tabLabels) as TabKey[]).map((key) => (
           <button
             key={key}
             type="button"
@@ -216,7 +211,7 @@ function ResultsTable({ result, activeTab, onTabChange, selectedKeys, onSelectio
                 : 'text-neutral-400 hover:text-neutral-200'
             }`}
           >
-            {TAB_LABELS[key]} ({result[key].length.toLocaleString()})
+            {tabLabels[key]} ({result[key].length.toLocaleString()})
           </button>
         ))}
       </div>

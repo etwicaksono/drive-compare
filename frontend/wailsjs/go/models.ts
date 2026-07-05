@@ -19,8 +19,8 @@ export namespace main {
 	    }
 	}
 	export class CompareResponse {
-	    localOnly: CompareResultItem[];
-	    driveOnly: CompareResultItem[];
+	    sourceAOnly: CompareResultItem[];
+	    sourceBOnly: CompareResultItem[];
 	    both: CompareResultItem[];
 	
 	    static createFrom(source: any = {}) {
@@ -29,8 +29,8 @@ export namespace main {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.localOnly = this.convertValues(source["localOnly"], CompareResultItem);
-	        this.driveOnly = this.convertValues(source["driveOnly"], CompareResultItem);
+	        this.sourceAOnly = this.convertValues(source["sourceAOnly"], CompareResultItem);
+	        this.sourceBOnly = this.convertValues(source["sourceBOnly"], CompareResultItem);
 	        this.both = this.convertValues(source["both"], CompareResultItem);
 	    }
 	

@@ -54,8 +54,8 @@ export function RemoveIgnorePattern(arg1) {
   return window['go']['main']['App']['RemoveIgnorePattern'](arg1);
 }
 
-export function RunComparison(arg1, arg2) {
-  return window['go']['main']['App']['RunComparison'](arg1, arg2);
+export function RunComparison(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['RunComparison'](arg1, arg2, arg3, arg4);
 }
 
 export function RunDuplicateScan(arg1, arg2, arg3) {

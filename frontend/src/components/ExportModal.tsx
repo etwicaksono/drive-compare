@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import type { TabKey } from '../lib/types';
 
 export type ExportContentType = 'items' | 'headers';
 
@@ -8,13 +7,13 @@ interface ExportModalProps {
   onClose: () => void;
   onExport: (pathSource: 'local' | 'drive', target: 'clipboard' | 'file', contentType: ExportContentType) => void;
   selectedCount: number;
-  activeTab: TabKey;
+  activeTab: string;
   showContentOption?: boolean;
   contentLabels?: { headers: string; items: string };
 }
 
 function ExportModal({ open, onClose, onExport, selectedCount, activeTab, showContentOption, contentLabels }: ExportModalProps): React.JSX.Element | null {
-  const defaultPathSource = activeTab === 'driveOnly' ? 'drive' : 'local';
+  const defaultPathSource = activeTab === 'sourceBOnly' || activeTab === 'driveOnly' ? 'drive' : 'local';
   const [pathSource, setPathSource] = useState<'local' | 'drive'>(defaultPathSource);
   const [target, setTarget] = useState<'clipboard' | 'file'>('clipboard');
   const [contentType, setContentType] = useState<ExportContentType>('items');

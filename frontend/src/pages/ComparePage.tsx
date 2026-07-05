@@ -12,34 +12,59 @@ function formatError(err: unknown): string {
   return String(err);
 }
 
+type SourceType = 'local' | 'drive';
+
+interface SourceState {
+  type: SourceType;
+  localDir: string;
+  driveId: string;
+  driveLabel: string;
+}
+
 const EMPTY_SELECTION: Record<TabKey, Set<string>> = {
-  localOnly: new Set(),
-  driveOnly: new Set(),
+  sourceAOnly: new Set(),
+  sourceBOnly: new Set(),
   both: new Set(),
 };
 
+function sourceLabel(s: SourceState): string {
+  if (s.type === 'local') return s.localDir || 'Local';
+  return s.driveLabel || 'Drive';
+}
+
 function ComparePage(): React.JSX.Element {
-  const [localDir, setLocalDir] = useState('');
-  const [driveDir, setDriveDir] = useState('');
-  const [driveDirLabel, setDriveDirLabel] = useState('');
+  const [sourceA, setSourceA] = useState<SourceState>({ type: 'local', localDir: '', driveId: '', driveLabel: '' });
+  const [sourceB, setSourceB] = useState<SourceState>({ type: 'drive', localDir: '', driveId: '', driveLabel: '' });
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<CompareResult | null>(null);
-  const [activeTab, setActiveTab] = useState<TabKey>('localOnly');
+  const [activeTab, setActiveTab] = useState<TabKey>('sourceAOnly');
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
-  const [showDrivePicker, setShowDrivePicker] = useState(false);
+  const [drivePicker, setDrivePicker] = useState<'a' | 'b' | null>(null);
   const [showExportModal, setShowExportModal] = useState(false);
   const [selections, setSelections] = useState<Record<TabKey, Set<string>>>({ ...EMPTY_SELECTION });
 
-  const canCompare = localDir !== '' && driveDir !== '' && !loading;
+  const sourceAID = sourceA.type === 'local' ? sourceA.localDir : sourceA.driveId;
+  const sourceBID = sourceB.type === 'local' ? sourceB.localDir : sourceB.driveId;
+  const canCompare = sourceAID !== '' && sourceBID !== '' && !loading;
   const currentSelection = selections[activeTab];
 
-  async function handleBrowseLocal(): Promise<void> {
+  const tabLabels: Record<TabKey, string> = {
+    sourceAOnly: `${sourceA.type === 'local' ? 'Local' : 'Drive'} 1st Only`,
+    sourceBOnly: `${sourceB.type === 'local' ? 'Local' : 'Drive'} 2nd Only`,
+    both: 'Both',
+  };
+
+  async function handleBrowseLocal(target: 'a' | 'b'): Promise<void> {
     try {
       setError('');
       const dir = await SelectLocalDirectory();
       if (dir) {
-        setLocalDir(dir);
+        if (target === 'a') {
+          setSourceA((prev) => ({ ...prev, localDir: dir }));
+        } else {
+          setSourceB((prev) => ({ ...prev, localDir: dir }));
+        }
       }
     } catch (err) {
       setError(`Failed to select directory: ${formatError(err)}`);
@@ -47,9 +72,12 @@ function ComparePage(): React.JSX.Element {
   }
 
   function handleDriveSelect(folderId: string, folderName: string): void {
-    setDriveDir(folderId);
-    setDriveDirLabel(folderName);
-    setShowDrivePicker(false);
+    if (drivePicker === 'a') {
+      setSourceA((prev) => ({ ...prev, driveId: folderId, driveLabel: folderName }));
+    } else {
+      setSourceB((prev) => ({ ...prev, driveId: folderId, driveLabel: folderName }));
+    }
+    setDrivePicker(null);
   }
 
   async function handleCompare(): Promise<void> {
@@ -57,13 +85,13 @@ function ComparePage(): React.JSX.Element {
     setResult(null);
     setError('');
     setSuccessMsg('');
-    setSelections({ localOnly: new Set(), driveOnly: new Set(), both: new Set() });
+    setSelections({ sourceAOnly: new Set(), sourceBOnly: new Set(), both: new Set() });
 
     try {
-      const resp = await RunComparison(localDir, driveDir);
+      const resp = await RunComparison(sourceA.type, sourceAID, sourceB.type, sourceBID);
       setResult({
-        localOnly: resp.localOnly ?? [],
-        driveOnly: resp.driveOnly ?? [],
+        sourceAOnly: resp.sourceAOnly ?? [],
+        sourceBOnly: resp.sourceBOnly ?? [],
         both: resp.both ?? [],
       });
     } catch (err) {
@@ -77,6 +105,12 @@ function ComparePage(): React.JSX.Element {
     setSelections((prev) => ({ ...prev, [activeTab]: keys }));
   }
 
+  function getExportPathSource(): 'local' | 'drive' {
+    if (activeTab === 'sourceAOnly') return sourceA.type;
+    if (activeTab === 'sourceBOnly') return sourceB.type;
+    return sourceA.type;
+  }
+
   async function handleExport(pathSource: 'local' | 'drive', target: 'clipboard' | 'file', _contentType: 'items' | 'headers'): Promise<void> {
     if (!result) return;
 
@@ -85,7 +119,9 @@ function ComparePage(): React.JSX.Element {
 
     if (selectedItems.length === 0) return;
 
-    const text = buildExportText(selectedItems, pathSource, localDir, driveDirLabel);
+    const localDir = sourceA.type === 'local' ? sourceA.localDir : sourceB.localDir;
+    const driveLabel = sourceA.type === 'drive' ? sourceA.driveLabel : sourceB.driveLabel;
+    const text = buildExportText(selectedItems, pathSource, localDir, driveLabel);
 
     try {
       if (target === 'clipboard') {
@@ -120,49 +156,23 @@ function ComparePage(): React.JSX.Element {
       )}
 
       <div className="flex flex-col gap-4 rounded-lg border border-neutral-800 bg-neutral-900 p-5">
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-neutral-300">Local Directory</label>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={localDir}
-              placeholder="Select a local folder..."
-              className="flex-1 rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-500 outline-none focus:border-blue-500 disabled:opacity-50"
-              readOnly
-              disabled={loading}
-            />
-            <button
-              type="button"
-              onClick={handleBrowseLocal}
-              disabled={loading}
-              className="rounded-md border border-neutral-700 bg-neutral-800 px-4 py-2 text-sm text-neutral-300 transition-colors hover:bg-neutral-700 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Browse
-            </button>
-          </div>
-        </div>
+        <SourceRow
+          label="First Source"
+          source={sourceA}
+          onChange={setSourceA}
+          onBrowseLocal={() => handleBrowseLocal('a')}
+          onBrowseDrive={() => setDrivePicker('a')}
+          disabled={loading}
+        />
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-neutral-300">Google Drive Folder</label>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={driveDirLabel}
-              placeholder="Select a Drive folder..."
-              className="flex-1 rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-500 outline-none focus:border-blue-500 disabled:opacity-50"
-              readOnly
-              disabled={loading}
-            />
-            <button
-              type="button"
-              onClick={() => setShowDrivePicker(true)}
-              disabled={loading}
-              className="rounded-md border border-neutral-700 bg-neutral-800 px-4 py-2 text-sm text-neutral-300 transition-colors hover:bg-neutral-700 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Browse
-            </button>
-          </div>
-        </div>
+        <SourceRow
+          label="Second Source"
+          source={sourceB}
+          onChange={setSourceB}
+          onBrowseLocal={() => handleBrowseLocal('b')}
+          onBrowseDrive={() => setDrivePicker('b')}
+          disabled={loading}
+        />
 
         <button
           type="button"
@@ -189,13 +199,14 @@ function ComparePage(): React.JSX.Element {
           selectedKeys={currentSelection}
           onSelectionChange={handleSelectionChange}
           onExport={() => setShowExportModal(true)}
+          tabLabels={tabLabels}
         />
       )}
 
       <DriveFolderPicker
-        open={showDrivePicker}
+        open={drivePicker !== null}
         onSelect={handleDriveSelect}
-        onClose={() => setShowDrivePicker(false)}
+        onClose={() => setDrivePicker(null)}
       />
 
       <ExportModal
@@ -205,6 +216,51 @@ function ComparePage(): React.JSX.Element {
         selectedCount={currentSelection.size}
         activeTab={activeTab}
       />
+    </div>
+  );
+}
+
+function SourceRow({ label, source, onChange, onBrowseLocal, onBrowseDrive, disabled }: {
+  label: string;
+  source: SourceState;
+  onChange: (s: SourceState) => void;
+  onBrowseLocal: () => void;
+  onBrowseDrive: () => void;
+  disabled: boolean;
+}): React.JSX.Element {
+  const displayValue = source.type === 'local' ? source.localDir : source.driveLabel;
+  const placeholder = source.type === 'local' ? 'Select a local folder...' : 'Select a Drive folder...';
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-sm font-medium text-neutral-300">{label}</label>
+      <div className="flex gap-2">
+        <select
+          value={source.type}
+          onChange={(e) => onChange({ ...source, type: e.target.value as SourceType })}
+          disabled={disabled}
+          className="w-28 rounded-md border border-neutral-700 bg-neutral-800 px-2 py-2 text-sm text-neutral-300 outline-none disabled:opacity-50"
+        >
+          <option value="local">Local</option>
+          <option value="drive">Drive</option>
+        </select>
+        <input
+          type="text"
+          value={displayValue}
+          placeholder={placeholder}
+          className="flex-1 rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-500 outline-none focus:border-blue-500 disabled:opacity-50"
+          readOnly
+          disabled={disabled}
+        />
+        <button
+          type="button"
+          onClick={source.type === 'local' ? onBrowseLocal : onBrowseDrive}
+          disabled={disabled}
+          className="rounded-md border border-neutral-700 bg-neutral-800 px-4 py-2 text-sm text-neutral-300 transition-colors hover:bg-neutral-700 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Browse
+        </button>
+      </div>
     </div>
   );
 }
