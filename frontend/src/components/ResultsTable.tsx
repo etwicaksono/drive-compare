@@ -1,11 +1,14 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import type { FileItem, TabKey, CompareResult } from '../lib/types';
-import { formatSize } from '../lib/types';
+import { formatSize, getItemKey } from '../lib/types';
 
 interface ResultsTableProps {
   result: CompareResult;
   activeTab: TabKey;
   onTabChange: (tab: TabKey) => void;
+  selectedKeys: Set<string>;
+  onSelectionChange: (keys: Set<string>) => void;
+  onExport: () => void;
 }
 
 const TAB_LABELS: Record<TabKey, string> = {
@@ -80,7 +83,7 @@ function SortIndicator({ field, sort }: { field: SortField; sort: SortState }): 
 
 const BATCH_SIZE = 50;
 
-function ResultsTable({ result, activeTab, onTabChange }: ResultsTableProps): React.JSX.Element {
+function ResultsTable({ result, activeTab, onTabChange, selectedKeys, onSelectionChange, onExport }: ResultsTableProps): React.JSX.Element {
   const [sort, setSort] = useState<SortState>({ field: 'name', direction: 'asc' });
   const [search, setSearch] = useState('');
   const [selectedExtensions, setSelectedExtensions] = useState<Set<string>>(new Set());
@@ -107,6 +110,18 @@ function ResultsTable({ result, activeTab, onTabChange }: ResultsTableProps): Re
 
   const visible = useMemo(() => sorted.slice(0, visibleCount), [sorted, visibleCount]);
   const hasMore = visibleCount < sorted.length;
+
+  const filteredKeys = useMemo(() => new Set(filtered.map(getItemKey)), [filtered]);
+  const selectedInFilter = useMemo(() => {
+    let count = 0;
+    for (const key of selectedKeys) {
+      if (filteredKeys.has(key)) count++;
+    }
+    return count;
+  }, [selectedKeys, filteredKeys]);
+
+  const allFilteredSelected = filtered.length > 0 && selectedInFilter === filtered.length;
+  const someFilteredSelected = selectedInFilter > 0 && !allFilteredSelected;
 
   useEffect(() => {
     setVisibleCount(BATCH_SIZE);
@@ -139,6 +154,30 @@ function ResultsTable({ result, activeTab, onTabChange }: ResultsTableProps): Re
       }
       return next;
     });
+  }
+
+  function toggleItem(key: string): void {
+    const next = new Set(selectedKeys);
+    if (next.has(key)) {
+      next.delete(key);
+    } else {
+      next.add(key);
+    }
+    onSelectionChange(next);
+  }
+
+  function toggleSelectAll(): void {
+    const next = new Set(selectedKeys);
+    if (allFilteredSelected) {
+      for (const key of filteredKeys) {
+        next.delete(key);
+      }
+    } else {
+      for (const key of filteredKeys) {
+        next.add(key);
+      }
+    }
+    onSelectionChange(next);
   }
 
   return (
@@ -214,13 +253,40 @@ function ResultsTable({ result, activeTab, onTabChange }: ResultsTableProps): Re
         <span className="ml-auto text-xs text-neutral-500">
           {sorted.length.toLocaleString()} of {items.length.toLocaleString()} files
         </span>
+
+        {selectedKeys.size > 0 && (
+          <>
+            <span className="text-xs text-blue-400">{selectedKeys.size} selected</span>
+            <button
+              type="button"
+              onClick={onExport}
+              className="rounded-md bg-blue-600 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-blue-500"
+            >
+              Export Selected
+            </button>
+          </>
+        )}
       </div>
 
       <div className="overflow-auto" ref={scrollRef} onScroll={handleScroll} style={{ maxHeight: '60vh' }}>
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-neutral-800 text-neutral-400">
-              <th className="sticky top-0 z-10 w-14 bg-neutral-900 px-4 py-3 font-medium">No</th>
+              <th
+                className="sticky top-0 z-10 w-14 bg-neutral-900 px-4 py-3 font-medium cursor-pointer group"
+                onClick={toggleSelectAll}
+              >
+                <span className="group-hover:hidden">{someFilteredSelected ? '—' : 'No'}</span>
+                <span className="hidden group-hover:inline">
+                  <input
+                    type="checkbox"
+                    checked={allFilteredSelected}
+                    readOnly
+                    className="accent-blue-500 pointer-events-none"
+                    ref={(el) => { if (el) el.indeterminate = someFilteredSelected; }}
+                  />
+                </span>
+              </th>
               {COLUMNS.map((col) => (
                 <th
                   key={col.key}
@@ -241,18 +307,36 @@ function ResultsTable({ result, activeTab, onTabChange }: ResultsTableProps): Re
                 </td>
               </tr>
             ) : (
-              visible.map((item: FileItem, index: number) => (
-                <tr
-                  key={`${item.relativePath}${item.name}${item.extension}`}
-                  className="border-b border-neutral-800/50 hover:bg-neutral-800/30"
-                >
-                  <td className="px-4 py-2.5 text-neutral-500">{index + 1}</td>
-                  <td className="px-4 py-2.5 text-white">{item.name}</td>
-                  <td className="px-4 py-2.5 text-neutral-400">{item.extension}</td>
-                  <td className="px-4 py-2.5 text-neutral-400">{formatSize(item.size)}</td>
-                  <td className="px-4 py-2.5 text-neutral-500">{item.relativePath || '/'}</td>
-                </tr>
-              ))
+              visible.map((item: FileItem, index: number) => {
+                const key = getItemKey(item);
+                const isSelected = selectedKeys.has(key);
+                return (
+                  <tr
+                    key={key}
+                    className={`group border-b border-neutral-800/50 hover:bg-neutral-800/30 ${isSelected ? 'bg-blue-900/10' : ''}`}
+                  >
+                    <td
+                      className="w-14 px-4 py-2.5 cursor-pointer select-none"
+                      onClick={() => toggleItem(key)}
+                    >
+                      {isSelected ? (
+                        <input type="checkbox" checked readOnly className="accent-blue-500 pointer-events-none" />
+                      ) : (
+                        <>
+                          <span className="text-neutral-500 group-hover:hidden">{index + 1}</span>
+                          <span className="hidden group-hover:inline">
+                            <input type="checkbox" checked={false} readOnly className="accent-blue-500 pointer-events-none" />
+                          </span>
+                        </>
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5 text-white">{item.name}</td>
+                    <td className="px-4 py-2.5 text-neutral-400">{item.extension}</td>
+                    <td className="px-4 py-2.5 text-neutral-400">{formatSize(item.size)}</td>
+                    <td className="px-4 py-2.5 text-neutral-500">{item.relativePath || '/'}</td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

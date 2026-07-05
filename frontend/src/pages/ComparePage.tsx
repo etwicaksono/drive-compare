@@ -1,14 +1,22 @@
 import { useState } from 'react';
-import { SelectLocalDirectory, RunComparison } from '../../wailsjs/go/main/App';
+import { SelectLocalDirectory, RunComparison, ExportToClipboard, ExportToFile } from '../../wailsjs/go/main/App';
 import ResultsTable from '../components/ResultsTable';
 import ErrorBanner from '../components/ErrorBanner';
 import DriveFolderPicker from '../components/DriveFolderPicker';
-import type { CompareResult, TabKey } from '../lib/types';
+import ExportModal from '../components/ExportModal';
+import type { CompareResult, TabKey, FileItem } from '../lib/types';
+import { getItemKey, buildExportText } from '../lib/types';
 
 function formatError(err: unknown): string {
   if (err instanceof Error) return err.message;
   return String(err);
 }
+
+const EMPTY_SELECTION: Record<TabKey, Set<string>> = {
+  localOnly: new Set(),
+  driveOnly: new Set(),
+  both: new Set(),
+};
 
 function ComparePage(): React.JSX.Element {
   const [localDir, setLocalDir] = useState('');
@@ -18,9 +26,13 @@ function ComparePage(): React.JSX.Element {
   const [result, setResult] = useState<CompareResult | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>('localOnly');
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
   const [showDrivePicker, setShowDrivePicker] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [selections, setSelections] = useState<Record<TabKey, Set<string>>>({ ...EMPTY_SELECTION });
 
   const canCompare = localDir !== '' && driveDir !== '' && !loading;
+  const currentSelection = selections[activeTab];
 
   async function handleBrowseLocal(): Promise<void> {
     try {
@@ -44,6 +56,8 @@ function ComparePage(): React.JSX.Element {
     setLoading(true);
     setResult(null);
     setError('');
+    setSuccessMsg('');
+    setSelections({ localOnly: new Set(), driveOnly: new Set(), both: new Set() });
 
     try {
       const resp = await RunComparison(localDir, driveDir);
@@ -59,11 +73,51 @@ function ComparePage(): React.JSX.Element {
     }
   }
 
+  function handleSelectionChange(keys: Set<string>): void {
+    setSelections((prev) => ({ ...prev, [activeTab]: keys }));
+  }
+
+  async function handleExport(pathSource: 'local' | 'drive', target: 'clipboard' | 'file'): Promise<void> {
+    if (!result) return;
+
+    const items = result[activeTab];
+    const selectedItems: FileItem[] = items.filter((item) => currentSelection.has(getItemKey(item)));
+
+    if (selectedItems.length === 0) return;
+
+    const text = buildExportText(selectedItems, pathSource, localDir, driveDirLabel);
+
+    try {
+      if (target === 'clipboard') {
+        await ExportToClipboard(text);
+        setSuccessMsg(`Exported ${selectedItems.length} file path${selectedItems.length !== 1 ? 's' : ''} to clipboard`);
+      } else {
+        const path = await ExportToFile(text);
+        if (path) {
+          setSuccessMsg(`Saved ${selectedItems.length} file path${selectedItems.length !== 1 ? 's' : ''} to ${path}`);
+        }
+      }
+    } catch (err) {
+      setError(`Export failed: ${formatError(err)}`);
+    }
+
+    setShowExportModal(false);
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-xl font-semibold">Compare</h1>
 
       {error && <ErrorBanner message={error} onDismiss={() => setError('')} />}
+
+      {successMsg && (
+        <div className="flex items-center justify-between rounded-lg border border-green-800/50 bg-green-900/20 px-4 py-3">
+          <p className="text-sm text-green-400">{successMsg}</p>
+          <button type="button" onClick={() => setSuccessMsg('')} className="ml-4 text-sm text-green-500 transition-colors hover:text-green-300">
+            Dismiss
+          </button>
+        </div>
+      )}
 
       <div className="flex flex-col gap-4 rounded-lg border border-neutral-800 bg-neutral-900 p-5">
         <div className="flex flex-col gap-1.5">
@@ -132,6 +186,9 @@ function ComparePage(): React.JSX.Element {
           result={result}
           activeTab={activeTab}
           onTabChange={setActiveTab}
+          selectedKeys={currentSelection}
+          onSelectionChange={handleSelectionChange}
+          onExport={() => setShowExportModal(true)}
         />
       )}
 
@@ -139,6 +196,14 @@ function ComparePage(): React.JSX.Element {
         open={showDrivePicker}
         onSelect={handleDriveSelect}
         onClose={() => setShowDrivePicker(false)}
+      />
+
+      <ExportModal
+        open={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        onExport={handleExport}
+        selectedCount={currentSelection.size}
+        activeTab={activeTab}
       />
     </div>
   );

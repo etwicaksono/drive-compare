@@ -10,6 +10,10 @@ export function DisconnectGoogleDrive():Promise<void>;
 
 export function ExchangeGoogleDriveCode(arg1:string):Promise<void>;
 
+export function ExportToClipboard(arg1:string):Promise<void>;
+
+export function ExportToFile(arg1:string):Promise<string>;
+
 export function GetDriveConnectionStatus():Promise<boolean>;
 
 export function GetIgnorePatterns():Promise<Array<string>>;

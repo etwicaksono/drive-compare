@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 
 	"personal-digital-inventory/internal/domain"
 	"personal-digital-inventory/internal/infrastructure/config"
@@ -312,4 +313,37 @@ func toResultItems(items []domain.FileItem) []CompareResultItem {
 		}
 	}
 	return result
+}
+
+func (a *App) ExportToClipboard(text string) error {
+	if text == "" {
+		return fmt.Errorf("nothing to export")
+	}
+	return runtime.ClipboardSetText(a.ctx, text)
+}
+
+func (a *App) ExportToFile(content string) (string, error) {
+	if content == "" {
+		return "", fmt.Errorf("nothing to export")
+	}
+
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		Title:           "Export file list",
+		DefaultFilename: "export.txt",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "Text Files", Pattern: "*.txt"},
+		},
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to open save dialog: %w", err)
+	}
+	if path == "" {
+		return "", nil
+	}
+
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		return "", fmt.Errorf("failed to write file: %w", err)
+	}
+
+	return path, nil
 }

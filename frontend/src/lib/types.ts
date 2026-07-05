@@ -21,3 +21,27 @@ export function formatSize(bytes: number): string {
   const value = bytes / Math.pow(k, i);
   return `${value.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
 }
+
+export function getItemKey(item: FileItem): string {
+  return `${item.relativePath}${item.name}${item.extension}`;
+}
+
+export function buildLocalPath(localDir: string, item: FileItem): string {
+  const rel = item.relativePath.replace(/\//g, '\\');
+  return `${localDir}\\${rel}${item.name}${item.extension}`;
+}
+
+export function buildDrivePath(driveLabel: string, item: FileItem): string {
+  return `${driveLabel}/${item.relativePath}${item.name}${item.extension}`;
+}
+
+export function buildExportText(
+  items: FileItem[],
+  pathSource: 'local' | 'drive',
+  localDir: string,
+  driveLabel: string,
+): string {
+  const builder = pathSource === 'local' ? buildLocalPath : buildDrivePath;
+  const base = pathSource === 'local' ? localDir : driveLabel;
+  return items.map((item) => builder(base, item)).join('\n');
+}

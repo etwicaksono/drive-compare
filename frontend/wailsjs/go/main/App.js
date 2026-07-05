@@ -18,6 +18,14 @@ export function ExchangeGoogleDriveCode(arg1) {
   return window['go']['main']['App']['ExchangeGoogleDriveCode'](arg1);
 }
 
+export function ExportToClipboard(arg1) {
+  return window['go']['main']['App']['ExportToClipboard'](arg1);
+}
+
+export function ExportToFile(arg1) {
+  return window['go']['main']['App']['ExportToFile'](arg1);
+}
+
 export function GetDriveConnectionStatus() {
   return window['go']['main']['App']['GetDriveConnectionStatus']();
 }
