@@ -336,12 +336,10 @@ function ResultsTable({ result, activeTab, onTabChange, selectedKeys, onSelectio
                 return (
                   <tr
                     key={key}
-                    className={`group border-b border-neutral-800/50 hover:bg-neutral-800/30 ${isSelected ? 'bg-blue-900/10' : ''}`}
+                    className={`group border-b border-neutral-800/50 hover:bg-neutral-800/30 cursor-pointer select-none ${isSelected ? 'bg-blue-900/10' : ''}`}
+                    onClick={(e) => handleItemClick(index, e)}
                   >
-                    <td
-                      className="w-14 px-4 py-2.5 cursor-pointer select-none"
-                      onClick={(e) => handleItemClick(index, e)}
-                    >
+                    <td className="w-14 px-4 py-2.5">
                       {isSelected ? (
                         <input type="checkbox" checked readOnly className="accent-blue-500 pointer-events-none" />
                       ) : (
