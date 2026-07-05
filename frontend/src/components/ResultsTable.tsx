@@ -177,13 +177,11 @@ function ResultsTable({ result, activeTab, onTabChange, selectedKeys, onSelectio
       }
       onSelectionChange(next);
     } else {
-      const next = new Set(selectedKeys);
-      if (next.has(key)) {
-        next.delete(key);
+      if (selectedKeys.has(key) && selectedKeys.size === 1) {
+        onSelectionChange(new Set());
       } else {
-        next.add(key);
+        onSelectionChange(new Set([key]));
       }
-      onSelectionChange(next);
     }
 
     lastClickedIndex.current = index;
