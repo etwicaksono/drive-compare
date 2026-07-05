@@ -14,6 +14,8 @@ export function GetDriveConnectionStatus():Promise<boolean>;
 
 export function GetIgnorePatterns():Promise<Array<string>>;
 
+export function GetRespectGitignore():Promise<boolean>;
+
 export function Greet(arg1:string):Promise<string>;
 
 export function ListDriveFolders(arg1:string):Promise<Array<main.DriveFolder>>;
@@ -23,3 +25,5 @@ export function RemoveIgnorePattern(arg1:string):Promise<void>;
 export function RunComparison(arg1:string,arg2:string):Promise<main.CompareResponse>;
 
 export function SelectLocalDirectory():Promise<string>;
+
+export function SetRespectGitignore(arg1:boolean):Promise<void>;

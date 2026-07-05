@@ -26,6 +26,10 @@ export function GetIgnorePatterns() {
   return window['go']['main']['App']['GetIgnorePatterns']();
 }
 
+export function GetRespectGitignore() {
+  return window['go']['main']['App']['GetRespectGitignore']();
+}
+
 export function Greet(arg1) {
   return window['go']['main']['App']['Greet'](arg1);
 }
@@ -44,4 +48,8 @@ export function RunComparison(arg1, arg2) {
 
 export function SelectLocalDirectory() {
   return window['go']['main']['App']['SelectLocalDirectory']();
+}
+
+export function SetRespectGitignore(arg1) {
+  return window['go']['main']['App']['SetRespectGitignore'](arg1);
 }

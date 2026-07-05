@@ -168,6 +168,19 @@ func (a *App) RemoveIgnorePattern(pattern string) error {
 	return fmt.Errorf("pattern %q not found", pattern)
 }
 
+func (a *App) GetRespectGitignore() bool {
+	if a.cfg == nil || a.cfg.Ignore.RespectGitignore == nil {
+		return true
+	}
+	return *a.cfg.Ignore.RespectGitignore
+}
+
+func (a *App) SetRespectGitignore(value bool) {
+	if a.cfg != nil {
+		a.cfg.Ignore.RespectGitignore = &value
+	}
+}
+
 type DriveFolder struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`

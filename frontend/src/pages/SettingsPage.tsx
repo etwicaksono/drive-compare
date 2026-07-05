@@ -6,6 +6,8 @@ import {
   GetIgnorePatterns,
   AddIgnorePattern,
   RemoveIgnorePattern,
+  GetRespectGitignore,
+  SetRespectGitignore,
 } from '../../wailsjs/go/main/App';
 import ErrorBanner from '../components/ErrorBanner';
 
@@ -116,11 +118,15 @@ function IgnorePatternsSection(): React.JSX.Element {
   const [patterns, setPatterns] = useState<string[]>([]);
   const [newPattern, setNewPattern] = useState('');
   const [error, setError] = useState('');
+  const [respectGitignore, setRespectGitignore] = useState(true);
 
   useEffect(() => {
     GetIgnorePatterns()
       .then((p) => setPatterns(p ?? []))
       .catch(() => setPatterns([]));
+    GetRespectGitignore()
+      .then(setRespectGitignore)
+      .catch(() => setRespectGitignore(true));
   }, []);
 
   async function handleAdd(): Promise<void> {
@@ -200,6 +206,30 @@ function IgnorePatternsSection(): React.JSX.Element {
             className="rounded-md bg-neutral-700 px-4 py-1.5 text-sm text-neutral-300 transition-colors hover:bg-neutral-600"
           >
             + Add Pattern
+          </button>
+        </div>
+
+        <div className="mt-2 flex items-center justify-between rounded-md bg-neutral-800 px-3 py-2.5">
+          <div>
+            <span className="text-sm text-neutral-300">Respect .gitignore files</span>
+            <p className="text-xs text-neutral-500 mt-0.5">When enabled, patterns in .gitignore files are automatically applied during local scans.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              const next = !respectGitignore;
+              setRespectGitignore(next);
+              SetRespectGitignore(next);
+            }}
+            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors ${
+              respectGitignore ? 'bg-blue-600' : 'bg-neutral-600'
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform mt-0.5 ${
+                respectGitignore ? 'translate-x-4' : 'translate-x-0.5'
+              }`}
+            />
           </button>
         </div>
       </div>
