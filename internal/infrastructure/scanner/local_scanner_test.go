@@ -22,7 +22,7 @@ func createFile(t *testing.T, path string, size int) {
 func TestLocalScanner_EmptyDirectory(t *testing.T) {
 	dir := t.TempDir()
 
-	s := NewLocalScanner(nil)
+	s := NewLocalScanner(nil, false)
 	items, err := s.Scan(context.Background(), dir)
 	if err != nil {
 		t.Fatalf("Scan() error: %v", err)
@@ -37,7 +37,7 @@ func TestLocalScanner_SingleFile(t *testing.T) {
 	dir := t.TempDir()
 	createFile(t, filepath.Join(dir, "photo.jpg"), 1024)
 
-	s := NewLocalScanner(nil)
+	s := NewLocalScanner(nil, false)
 	items, err := s.Scan(context.Background(), dir)
 	if err != nil {
 		t.Fatalf("Scan() error: %v", err)
@@ -69,7 +69,7 @@ func TestLocalScanner_NestedDirectories(t *testing.T) {
 	createFile(t, filepath.Join(dir, "Documents", "Work", "report.docx"), 4096)
 	createFile(t, filepath.Join(dir, "Photos", "DCIM", "img001.png"), 8192)
 
-	s := NewLocalScanner(nil)
+	s := NewLocalScanner(nil, false)
 	items, err := s.Scan(context.Background(), dir)
 	if err != nil {
 		t.Fatalf("Scan() error: %v", err)
@@ -117,7 +117,7 @@ func TestLocalScanner_FileWithoutExtension(t *testing.T) {
 	dir := t.TempDir()
 	createFile(t, filepath.Join(dir, "Makefile"), 100)
 
-	s := NewLocalScanner(nil)
+	s := NewLocalScanner(nil, false)
 	items, err := s.Scan(context.Background(), dir)
 	if err != nil {
 		t.Fatalf("Scan() error: %v", err)
@@ -139,7 +139,7 @@ func TestLocalScanner_FileWithMultipleDots(t *testing.T) {
 	dir := t.TempDir()
 	createFile(t, filepath.Join(dir, "archive.tar.gz"), 500)
 
-	s := NewLocalScanner(nil)
+	s := NewLocalScanner(nil, false)
 	items, err := s.Scan(context.Background(), dir)
 	if err != nil {
 		t.Fatalf("Scan() error: %v", err)
@@ -158,7 +158,7 @@ func TestLocalScanner_FileWithMultipleDots(t *testing.T) {
 }
 
 func TestLocalScanner_NonExistentDirectory(t *testing.T) {
-	s := NewLocalScanner(nil)
+	s := NewLocalScanner(nil, false)
 	_, err := s.Scan(context.Background(), "/nonexistent/path/that/does/not/exist")
 	if err == nil {
 		t.Fatal("Scan() should return error for non-existent directory")
@@ -169,7 +169,7 @@ func TestLocalScanner_ZeroSizeFile(t *testing.T) {
 	dir := t.TempDir()
 	createFile(t, filepath.Join(dir, "empty.txt"), 0)
 
-	s := NewLocalScanner(nil)
+	s := NewLocalScanner(nil, false)
 	items, err := s.Scan(context.Background(), dir)
 	if err != nil {
 		t.Fatalf("Scan() error: %v", err)
@@ -215,7 +215,7 @@ func TestLocalScanner_IgnoreDirectory(t *testing.T) {
 	createFile(t, filepath.Join(dir, "node_modules", "pkg", "index.js"), 100)
 	createFile(t, filepath.Join(dir, ".git", "config"), 50)
 
-	s := NewLocalScanner([]string{"node_modules", ".git"})
+	s := NewLocalScanner([]string{"node_modules", ".git"}, false)
 	items, err := s.Scan(context.Background(), dir)
 	if err != nil {
 		t.Fatalf("Scan() error: %v", err)
@@ -236,7 +236,7 @@ func TestLocalScanner_IgnoreFileByGlob(t *testing.T) {
 	createFile(t, filepath.Join(dir, "temp.tmp"), 50)
 	createFile(t, filepath.Join(dir, "cache.cache"), 30)
 
-	s := NewLocalScanner([]string{"*.tmp", "*.cache"})
+	s := NewLocalScanner([]string{"*.tmp", "*.cache"}, false)
 	items, err := s.Scan(context.Background(), dir)
 	if err != nil {
 		t.Fatalf("Scan() error: %v", err)
@@ -257,7 +257,7 @@ func TestLocalScanner_IgnoreSpecificFiles(t *testing.T) {
 	createFile(t, filepath.Join(dir, "Thumbs.db"), 50)
 	createFile(t, filepath.Join(dir, "desktop.ini"), 30)
 
-	s := NewLocalScanner([]string{"Thumbs.db", "desktop.ini"})
+	s := NewLocalScanner([]string{"Thumbs.db", "desktop.ini"}, false)
 	items, err := s.Scan(context.Background(), dir)
 	if err != nil {
 		t.Fatalf("Scan() error: %v", err)
@@ -277,7 +277,7 @@ func TestLocalScanner_IgnoreNestedMatch(t *testing.T) {
 	createFile(t, filepath.Join(dir, "src", "app.ts"), 100)
 	createFile(t, filepath.Join(dir, "src", "node_modules", "lib", "index.js"), 200)
 
-	s := NewLocalScanner([]string{"node_modules"})
+	s := NewLocalScanner([]string{"node_modules"}, false)
 	items, err := s.Scan(context.Background(), dir)
 	if err != nil {
 		t.Fatalf("Scan() error: %v", err)
@@ -297,7 +297,7 @@ func TestLocalScanner_NoIgnorePatterns(t *testing.T) {
 	createFile(t, filepath.Join(dir, "node_modules", "pkg.js"), 100)
 	createFile(t, filepath.Join(dir, "file.tmp"), 50)
 
-	s := NewLocalScanner(nil)
+	s := NewLocalScanner(nil, false)
 	items, err := s.Scan(context.Background(), dir)
 	if err != nil {
 		t.Fatalf("Scan() error: %v", err)
@@ -312,7 +312,7 @@ func TestLocalScanner_EmptyIgnorePatterns(t *testing.T) {
 	dir := t.TempDir()
 	createFile(t, filepath.Join(dir, "file.txt"), 10)
 
-	s := NewLocalScanner([]string{})
+	s := NewLocalScanner([]string{}, false)
 	items, err := s.Scan(context.Background(), dir)
 	if err != nil {
 		t.Fatalf("Scan() error: %v", err)
@@ -324,7 +324,7 @@ func TestLocalScanner_EmptyIgnorePatterns(t *testing.T) {
 }
 
 func TestShouldIgnore(t *testing.T) {
-	s := NewLocalScanner([]string{"node_modules", ".git", "*.tmp", "Thumbs.db"})
+	s := NewLocalScanner([]string{"node_modules", ".git", "*.tmp", "Thumbs.db"}, false)
 
 	tests := []struct {
 		name string
@@ -340,7 +340,7 @@ func TestShouldIgnore(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got := s.shouldIgnore(tt.name)
+		got := s.shouldIgnore(tt.name, "", "")
 		if got != tt.want {
 			t.Errorf("shouldIgnore(%q) = %v, want %v", tt.name, got, tt.want)
 		}
@@ -355,9 +355,129 @@ func TestLocalScanner_CancelledContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	s := NewLocalScanner(nil)
+	s := NewLocalScanner(nil, false)
 	_, err := s.Scan(ctx, dir)
 	if err == nil {
 		t.Fatal("Scan() should return error for cancelled context")
+	}
+}
+
+func TestLocalScanner_GitignoreBasic(t *testing.T) {
+	dir := t.TempDir()
+	createFile(t, filepath.Join(dir, ".gitignore"), 0)
+	os.WriteFile(filepath.Join(dir, ".gitignore"), []byte("dist\n*.log\n"), 0644)
+	os.MkdirAll(filepath.Join(dir, "dist"), 0755)
+	createFile(t, filepath.Join(dir, "dist", "bundle.js"), 100)
+	createFile(t, filepath.Join(dir, "error.log"), 50)
+	createFile(t, filepath.Join(dir, "main.go"), 200)
+
+	s := NewLocalScanner(nil, true)
+	items, err := s.Scan(context.Background(), dir)
+	if err != nil {
+		t.Fatalf("Scan() error: %v", err)
+	}
+
+	if len(items) != 2 {
+		t.Fatalf("expected 2 items (.gitignore + main.go), got %d", len(items))
+	}
+}
+
+func TestLocalScanner_GitignoreCommentAndBlank(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, ".gitignore"), []byte("# comment\n\nbuild\n"), 0644)
+	os.MkdirAll(filepath.Join(dir, "build"), 0755)
+	createFile(t, filepath.Join(dir, "build", "app.exe"), 500)
+	createFile(t, filepath.Join(dir, "readme.md"), 100)
+
+	s := NewLocalScanner(nil, true)
+	items, err := s.Scan(context.Background(), dir)
+	if err != nil {
+		t.Fatalf("Scan() error: %v", err)
+	}
+
+	if len(items) != 2 {
+		t.Fatalf("expected 2 items (.gitignore + readme.md), got %d", len(items))
+	}
+}
+
+func TestLocalScanner_GitignoreDisabled(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, ".gitignore"), []byte("dist\n"), 0644)
+	os.MkdirAll(filepath.Join(dir, "dist"), 0755)
+	createFile(t, filepath.Join(dir, "dist", "bundle.js"), 100)
+	createFile(t, filepath.Join(dir, "main.go"), 200)
+
+	s := NewLocalScanner(nil, false)
+	items, err := s.Scan(context.Background(), dir)
+	if err != nil {
+		t.Fatalf("Scan() error: %v", err)
+	}
+
+	if len(items) != 3 {
+		t.Fatalf("expected 3 items (.gitignore + dist/bundle.js + main.go), got %d", len(items))
+	}
+}
+
+func TestLocalScanner_GitignoreNested(t *testing.T) {
+	dir := t.TempDir()
+	sub := filepath.Join(dir, "sub")
+	os.MkdirAll(sub, 0755)
+	os.WriteFile(filepath.Join(sub, ".gitignore"), []byte("*.tmp\n"), 0644)
+	createFile(t, filepath.Join(dir, "root.tmp"), 10)
+	createFile(t, filepath.Join(sub, "nested.tmp"), 20)
+	createFile(t, filepath.Join(sub, "keep.txt"), 30)
+
+	s := NewLocalScanner(nil, true)
+	items, err := s.Scan(context.Background(), dir)
+	if err != nil {
+		t.Fatalf("Scan() error: %v", err)
+	}
+
+	names := make(map[string]bool)
+	for _, item := range items {
+		names[item.Name+item.Extension] = true
+	}
+
+	if !names["root.tmp"] {
+		t.Error("root.tmp should NOT be ignored (no .gitignore in root)")
+	}
+	if names["nested.tmp"] {
+		t.Error("nested.tmp should be ignored by sub/.gitignore")
+	}
+	if !names["keep.txt"] {
+		t.Error("keep.txt should be kept")
+	}
+}
+
+func TestLocalScanner_GitignoreTrailingSlash(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, ".gitignore"), []byte("vendor/\n"), 0644)
+	os.MkdirAll(filepath.Join(dir, "vendor"), 0755)
+	createFile(t, filepath.Join(dir, "vendor", "lib.go"), 100)
+	createFile(t, filepath.Join(dir, "main.go"), 200)
+
+	s := NewLocalScanner(nil, true)
+	items, err := s.Scan(context.Background(), dir)
+	if err != nil {
+		t.Fatalf("Scan() error: %v", err)
+	}
+
+	if len(items) != 2 {
+		t.Fatalf("expected 2 items (.gitignore + main.go), got %d", len(items))
+	}
+}
+
+func TestLocalScanner_GitignoreNoFile(t *testing.T) {
+	dir := t.TempDir()
+	createFile(t, filepath.Join(dir, "file.txt"), 10)
+
+	s := NewLocalScanner(nil, true)
+	items, err := s.Scan(context.Background(), dir)
+	if err != nil {
+		t.Fatalf("Scan() error: %v", err)
+	}
+
+	if len(items) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(items))
 	}
 }

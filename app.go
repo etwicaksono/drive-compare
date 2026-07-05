@@ -247,7 +247,7 @@ func (a *App) RunComparison(localPath string, driveFolderID string) (*CompareRes
 
 	slog.Info("Starting comparison", "localPath", localPath, "driveFolderID", driveFolderID)
 
-	localScanner := scanner.NewLocalScanner(a.cfg.Ignore.Patterns)
+	localScanner := scanner.NewLocalScanner(a.cfg.Ignore.Patterns, *a.cfg.Ignore.RespectGitignore)
 	localFiles, err := localScanner.Scan(a.ctx, localPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to scan local directory: %w", err)
