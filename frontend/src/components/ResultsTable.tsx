@@ -220,11 +220,11 @@ function ResultsTable({ result, activeTab, onTabChange }: ResultsTableProps): Re
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-neutral-800 text-neutral-400">
-              <th className="w-14 px-4 py-3 font-medium">No</th>
+              <th className="sticky top-0 z-10 w-14 bg-neutral-900 px-4 py-3 font-medium">No</th>
               {COLUMNS.map((col) => (
                 <th
                   key={col.key}
-                  className={`${col.className} cursor-pointer select-none font-medium hover:text-neutral-200`}
+                  className={`sticky top-0 z-10 bg-neutral-900 ${col.className} cursor-pointer select-none font-medium hover:text-neutral-200`}
                   onClick={() => handleSort(col.key)}
                 >
                   {col.label}
