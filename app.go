@@ -347,3 +347,104 @@ func (a *App) ExportToFile(content string) (string, error) {
 
 	return path, nil
 }
+
+type DuplicatePatternInfo struct {
+	ID      string `json:"id"`
+	Label   string `json:"label"`
+	Example string `json:"example"`
+}
+
+func (a *App) GetDuplicatePatterns() []DuplicatePatternInfo {
+	examples := map[string]string{
+		"windows_copy":   "photo (1).jpg, photo (2).jpg",
+		"macos_copy":     "photo copy.jpg, photo copy 2.jpg",
+		"underscore_num": "photo_1.jpg, photo_2.jpg",
+		"dash_num":       "photo-1.jpg, photo-2.jpg",
+	}
+
+	patterns := domain.BuiltinPatterns()
+	result := make([]DuplicatePatternInfo, len(patterns))
+	for i, p := range patterns {
+		result[i] = DuplicatePatternInfo{ID: p.ID, Label: p.Label, Example: examples[p.ID]}
+	}
+	return result
+}
+
+type DuplicateGroupResponse struct {
+	BaseName     string              `json:"baseName"`
+	Extension    string              `json:"extension"`
+	RelativePath string              `json:"relativePath"`
+	Files        []CompareResultItem `json:"files"`
+}
+
+type DuplicateScanResponse struct {
+	Groups      []DuplicateGroupResponse `json:"groups"`
+	TotalGroups int                      `json:"totalGroups"`
+	TotalFiles  int                      `json:"totalFiles"`
+}
+
+func (a *App) RunDuplicateScan(sourceType string, sourceID string, patternIDs []string) (*DuplicateScanResponse, error) {
+	if len(patternIDs) == 0 {
+		return nil, fmt.Errorf("at least one pattern is required")
+	}
+
+	patterns := domain.GetPatternsByIDs(patternIDs)
+	if len(patterns) == 0 {
+		return nil, fmt.Errorf("no valid patterns selected")
+	}
+
+	var files []domain.FileItem
+	var err error
+
+	switch sourceType {
+	case "local":
+		if sourceID == "" {
+			return nil, fmt.Errorf("local directory is required")
+		}
+		s := scanner.NewLocalScanner(a.cfg.Ignore.Patterns, *a.cfg.Ignore.RespectGitignore)
+		files, err = s.Scan(a.ctx, sourceID)
+	case "drive":
+		if a.auth == nil || !a.auth.IsConnected() {
+			return nil, fmt.Errorf("Google Drive not connected. Please connect in Settings first.")
+		}
+		client, cerr := a.auth.GetClient(a.ctx)
+		if cerr != nil {
+			return nil, fmt.Errorf("failed to get Drive client: %w", cerr)
+		}
+		api, aerr := scanner.NewRealDriveAPI(client)
+		if aerr != nil {
+			return nil, fmt.Errorf("failed to create Drive API: %w", aerr)
+		}
+		s := scanner.NewDriveScanner(api, a.cfg.Ignore.Patterns)
+		files, err = s.Scan(a.ctx, sourceID)
+	default:
+		return nil, fmt.Errorf("invalid source type %q, must be \"local\" or \"drive\"", sourceType)
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("scan failed: %w", err)
+	}
+
+	slog.Info("Duplicate scan complete", "source", sourceType, "files", len(files))
+
+	groups := domain.DetectDuplicates(files, patterns)
+
+	resp := &DuplicateScanResponse{
+		Groups:      make([]DuplicateGroupResponse, len(groups)),
+		TotalGroups: len(groups),
+	}
+
+	for i, g := range groups {
+		resp.Groups[i] = DuplicateGroupResponse{
+			BaseName:     g.BaseName,
+			Extension:    g.Extension,
+			RelativePath: g.RelativePath,
+			Files:        toResultItems(g.Files),
+		}
+		resp.TotalFiles += len(g.Files)
+	}
+
+	slog.Info("Duplicates found", "groups", resp.TotalGroups, "files", resp.TotalFiles)
+
+	return resp, nil
+}

@@ -30,6 +30,10 @@ export function GetDriveConnectionStatus() {
   return window['go']['main']['App']['GetDriveConnectionStatus']();
 }
 
+export function GetDuplicatePatterns() {
+  return window['go']['main']['App']['GetDuplicatePatterns']();
+}
+
 export function GetIgnorePatterns() {
   return window['go']['main']['App']['GetIgnorePatterns']();
 }
@@ -52,6 +56,10 @@ export function RemoveIgnorePattern(arg1) {
 
 export function RunComparison(arg1, arg2) {
   return window['go']['main']['App']['RunComparison'](arg1, arg2);
+}
+
+export function RunDuplicateScan(arg1, arg2, arg3) {
+  return window['go']['main']['App']['RunDuplicateScan'](arg1, arg2, arg3);
 }
 
 export function SelectLocalDirectory() {

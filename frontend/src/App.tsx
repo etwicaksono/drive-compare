@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import ComparePage from './pages/ComparePage';
+import DuplicatesPage from './pages/DuplicatesPage';
 import SettingsPage from './pages/SettingsPage';
 
 function App(): React.JSX.Element {
@@ -9,6 +10,7 @@ function App(): React.JSX.Element {
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<ComparePage />} />
+          <Route path="/duplicates" element={<DuplicatesPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Routes>

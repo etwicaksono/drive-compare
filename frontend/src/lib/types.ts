@@ -45,3 +45,22 @@ export function buildExportText(
   const base = pathSource === 'local' ? localDir : driveLabel;
   return items.map((item) => builder(base, item)).join('\n');
 }
+
+export interface DuplicatePatternInfo {
+  id: string;
+  label: string;
+  example: string;
+}
+
+export interface DuplicateGroup {
+  baseName: string;
+  extension: string;
+  relativePath: string;
+  files: FileItem[];
+}
+
+export interface DuplicateScanResult {
+  groups: DuplicateGroup[];
+  totalGroups: number;
+  totalFiles: number;
+}

@@ -16,6 +16,8 @@ export function ExportToFile(arg1:string):Promise<string>;
 
 export function GetDriveConnectionStatus():Promise<boolean>;
 
+export function GetDuplicatePatterns():Promise<Array<main.DuplicatePatternInfo>>;
+
 export function GetIgnorePatterns():Promise<Array<string>>;
 
 export function GetRespectGitignore():Promise<boolean>;
@@ -27,6 +29,8 @@ export function ListDriveFolders(arg1:string):Promise<Array<main.DriveFolder>>;
 export function RemoveIgnorePattern(arg1:string):Promise<void>;
 
 export function RunComparison(arg1:string,arg2:string):Promise<main.CompareResponse>;
+
+export function RunDuplicateScan(arg1:string,arg2:string,arg3:Array<string>):Promise<main.DuplicateScanResponse>;
 
 export function SelectLocalDirectory():Promise<string>;
 
