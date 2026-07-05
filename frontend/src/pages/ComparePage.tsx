@@ -77,7 +77,7 @@ function ComparePage(): React.JSX.Element {
     setSelections((prev) => ({ ...prev, [activeTab]: keys }));
   }
 
-  async function handleExport(pathSource: 'local' | 'drive', target: 'clipboard' | 'file'): Promise<void> {
+  async function handleExport(pathSource: 'local' | 'drive', target: 'clipboard' | 'file', _contentType: 'items' | 'headers'): Promise<void> {
     if (!result) return;
 
     const items = result[activeTab];

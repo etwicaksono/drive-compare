@@ -159,6 +159,7 @@ function ResultsTable({ result, activeTab, onTabChange, selectedKeys, onSelectio
 
   function handleItemClick(index: number, e: React.MouseEvent): void {
     const key = getItemKey(sorted[index]);
+    if (e.shiftKey) e.preventDefault();
 
     if (e.shiftKey && lastClickedIndex.current >= 0) {
       const start = Math.min(lastClickedIndex.current, index);

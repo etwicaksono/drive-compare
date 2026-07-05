@@ -23,8 +23,8 @@ func BuiltinPatterns() []DuplicatePattern {
 	return []DuplicatePattern{
 		{ID: "windows_copy", Label: "Windows copy (N)", Regex: regexp.MustCompile(`^(.+)\s\(\d+\)$`)},
 		{ID: "macos_copy", Label: "macOS copy", Regex: regexp.MustCompile(`^(.+)\scopy(?:\s\d+)?$`)},
-		{ID: "underscore_num", Label: "Underscore _N", Regex: regexp.MustCompile(`^(.+)_\d+$`)},
-		{ID: "dash_num", Label: "Dash -N", Regex: regexp.MustCompile(`^(.+)-\d+$`)},
+		{ID: "underscore_num", Label: "Underscore _N", Regex: regexp.MustCompile(`^(.+)_\d{1,3}$`)},
+		{ID: "dash_num", Label: "Dash -N", Regex: regexp.MustCompile(`^(.+)-\d{1,3}$`)},
 	}
 }
 
@@ -59,6 +59,7 @@ func DetectDuplicates(files []FileItem, patterns []DuplicatePattern) []Duplicate
 		baseName     string
 		extension    string
 		relativePath string
+		size         int64
 	}
 
 	groups := make(map[groupKey][]FileItem)
@@ -66,7 +67,7 @@ func DetectDuplicates(files []FileItem, patterns []DuplicatePattern) []Duplicate
 
 	for _, f := range files {
 		base := ExtractBaseName(f.Name, patterns)
-		key := groupKey{baseName: base, extension: f.Extension, relativePath: f.RelativePath}
+		key := groupKey{baseName: base, extension: f.Extension, relativePath: f.RelativePath, size: f.Size}
 		if _, exists := groups[key]; !exists {
 			order = append(order, key)
 		}

@@ -34,6 +34,11 @@ func TestExtractBaseName(t *testing.T) {
 		{"a_1", "a"},
 		{"b-2", "b"},
 		{"photo (1) (1)", "photo (1)"},
+		{"data_999", "data"},
+		{"IMG_20241122_085424", "IMG_20241122_085424"},
+		{"VID_20230101-120000", "VID_20230101-120000"},
+		{"file_1234", "file_1234"},
+		{"file-1234", "file-1234"},
 	}
 	for _, tt := range tests {
 		got := ExtractBaseName(tt.name, patterns)
@@ -103,6 +108,36 @@ func TestDetectDuplicates_DifferentPaths(t *testing.T) {
 	groups := DetectDuplicates(files, patterns)
 	if len(groups) != 0 {
 		t.Errorf("expected 0 groups (different paths), got %d", len(groups))
+	}
+}
+
+func TestDetectDuplicates_DifferentSizes(t *testing.T) {
+	patterns := BuiltinPatterns()
+	files := []FileItem{
+		{RelativePath: "photos/", Name: "photo", Extension: ".jpg", Size: 100},
+		{RelativePath: "photos/", Name: "photo (1)", Extension: ".jpg", Size: 200},
+	}
+
+	groups := DetectDuplicates(files, patterns)
+	if len(groups) != 0 {
+		t.Errorf("expected 0 groups (different sizes), got %d", len(groups))
+	}
+}
+
+func TestDetectDuplicates_MixedSizes(t *testing.T) {
+	patterns := BuiltinPatterns()
+	files := []FileItem{
+		{RelativePath: "", Name: "doc", Extension: ".pdf", Size: 500},
+		{RelativePath: "", Name: "doc (1)", Extension: ".pdf", Size: 500},
+		{RelativePath: "", Name: "doc (2)", Extension: ".pdf", Size: 999},
+	}
+
+	groups := DetectDuplicates(files, patterns)
+	if len(groups) != 1 {
+		t.Fatalf("expected 1 group (same size pair), got %d", len(groups))
+	}
+	if len(groups[0].Files) != 2 {
+		t.Errorf("expected 2 files in group, got %d", len(groups[0].Files))
 	}
 }
 

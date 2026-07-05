@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import type { DuplicateGroup, FileItem } from '../lib/types';
 import { formatSize } from '../lib/types';
 
@@ -6,6 +6,9 @@ interface DuplicateResultsTableProps {
   groups: DuplicateGroup[];
   totalGroups: number;
   totalFiles: number;
+  selectedGroupKeys: Set<string>;
+  onSelectionChange: (keys: Set<string>) => void;
+  onExport: () => void;
 }
 
 type SortField = 'name' | 'extension' | 'size' | 'relativePath';
@@ -51,12 +54,17 @@ const COLUMNS: { key: SortField; label: string; className: string }[] = [
   { key: 'relativePath', label: 'Relative Path', className: 'px-4 py-2' },
 ];
 
-function DuplicateResultsTable({ groups, totalGroups, totalFiles }: DuplicateResultsTableProps): React.JSX.Element {
+export function makeGroupKey(g: DuplicateGroup): string {
+  return `${g.baseName}${g.extension}|${g.relativePath}`;
+}
+
+function DuplicateResultsTable({ groups, totalGroups, totalFiles, selectedGroupKeys, onSelectionChange, onExport }: DuplicateResultsTableProps): React.JSX.Element {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [sort, setSort] = useState<SortState>({ field: 'name', direction: 'asc' });
   const [search, setSearch] = useState('');
   const [selectedExtensions, setSelectedExtensions] = useState<Set<string>>(new Set());
   const [sizeRangeIndex, setSizeRangeIndex] = useState(0);
+  const lastClickedGroupIndex = useRef<number>(-1);
 
   const filteredGroups = useMemo(() => {
     return groups
@@ -72,6 +80,35 @@ function DuplicateResultsTable({ groups, totalGroups, totalFiles }: DuplicateRes
       })
       .filter((g) => g.files.length > 0);
   }, [groups, search, selectedExtensions, sizeRangeIndex]);
+
+  const sortedGroups = useMemo(() => {
+    return filteredGroups.map((g) => ({ ...g, files: sortFiles(g.files, sort) }));
+  }, [filteredGroups, sort]);
+
+  const allGroupKeys = useMemo(() => {
+    return new Set(filteredGroups.map(makeGroupKey));
+  }, [filteredGroups]);
+
+  const selectedInFilter = useMemo(() => {
+    let count = 0;
+    for (const key of selectedGroupKeys) {
+      if (allGroupKeys.has(key)) count++;
+    }
+    return count;
+  }, [selectedGroupKeys, allGroupKeys]);
+
+  const selectedFileCount = useMemo(() => {
+    let count = 0;
+    for (const g of filteredGroups) {
+      if (selectedGroupKeys.has(makeGroupKey(g))) {
+        count += g.files.length;
+      }
+    }
+    return count;
+  }, [filteredGroups, selectedGroupKeys]);
+
+  const allSelected = allGroupKeys.size > 0 && selectedInFilter === allGroupKeys.size;
+  const someSelected = selectedInFilter > 0 && !allSelected;
 
   const availableExtensions = useMemo(() => {
     const exts = new Set<string>();
@@ -110,8 +147,37 @@ function DuplicateResultsTable({ groups, totalGroups, totalFiles }: DuplicateRes
     });
   }
 
-  function groupKey(g: DuplicateGroup): string {
-    return `${g.baseName}${g.extension}|${g.relativePath}`;
+  function handleGroupClick(key: string, index: number, e: React.MouseEvent): void {
+    e.stopPropagation();
+    if (e.shiftKey) e.preventDefault();
+    if (e.shiftKey && lastClickedGroupIndex.current >= 0) {
+      const start = Math.min(lastClickedGroupIndex.current, index);
+      const end = Math.max(lastClickedGroupIndex.current, index);
+      const next = new Set(selectedGroupKeys);
+      for (let i = start; i <= end; i++) {
+        next.add(makeGroupKey(sortedGroups[i]));
+      }
+      onSelectionChange(next);
+    } else if (e.ctrlKey || e.metaKey) {
+      const next = new Set(selectedGroupKeys);
+      if (next.has(key)) { next.delete(key); } else { next.add(key); }
+      onSelectionChange(next);
+    } else {
+      if (selectedGroupKeys.has(key) && selectedGroupKeys.size === 1) {
+        onSelectionChange(new Set());
+      } else {
+        onSelectionChange(new Set([key]));
+      }
+    }
+    lastClickedGroupIndex.current = index;
+  }
+
+  function toggleSelectAll(): void {
+    if (allSelected) {
+      onSelectionChange(new Set());
+    } else {
+      onSelectionChange(new Set(allGroupKeys));
+    }
   }
 
   if (groups.length === 0) {
@@ -173,15 +239,57 @@ function DuplicateResultsTable({ groups, totalGroups, totalFiles }: DuplicateRes
           </select>
         </div>
 
-        <span className="ml-auto text-xs text-neutral-500">
-          Showing {filteredGroups.length} of {totalGroups} groups ({filteredFileCount} files)
-        </span>
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setCollapsed(new Set())}
+            className="rounded px-2 py-0.5 text-xs text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 transition-colors"
+          >
+            Expand All
+          </button>
+          <button
+            type="button"
+            onClick={() => setCollapsed(new Set(filteredGroups.map(makeGroupKey)))}
+            className="rounded px-2 py-0.5 text-xs text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 transition-colors"
+          >
+            Collapse All
+          </button>
+          <span className="text-xs text-neutral-500">
+            Showing {filteredGroups.length} of {totalGroups} groups ({filteredFileCount} files)
+          </span>
+          {selectedInFilter > 0 && (
+            <>
+              <span className="text-xs text-blue-400">
+                {selectedInFilter} group{selectedInFilter !== 1 ? 's' : ''} ({selectedFileCount} files)
+              </span>
+              <button
+                type="button"
+                onClick={onExport}
+                className="rounded-md bg-blue-600 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-blue-500"
+              >
+                Export Selected
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="overflow-auto" style={{ maxHeight: '60vh' }}>
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-neutral-800 text-neutral-400">
+              <th
+                className="sticky top-0 z-10 w-10 bg-neutral-900 px-3 py-2 font-medium cursor-pointer"
+                onClick={toggleSelectAll}
+              >
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  readOnly
+                  className="accent-blue-500 pointer-events-none"
+                  ref={(el) => { if (el) el.indeterminate = someSelected; }}
+                />
+              </th>
               <th className="sticky top-0 z-10 w-14 bg-neutral-900 px-4 py-2 font-medium">No</th>
               {COLUMNS.map((col) => (
                 <th
@@ -196,18 +304,20 @@ function DuplicateResultsTable({ groups, totalGroups, totalFiles }: DuplicateRes
             </tr>
           </thead>
           <tbody>
-            {filteredGroups.map((group) => {
-              const key = groupKey(group);
+            {sortedGroups.map((group, index) => {
+              const key = makeGroupKey(group);
               const isCollapsed = collapsed.has(key);
-              const sorted = sortFiles(group.files, sort);
+              const isGroupSelected = selectedGroupKeys.has(key);
 
               return (
                 <GroupRows
                   key={key}
                   group={group}
-                  files={sorted}
+                  files={group.files}
                   isCollapsed={isCollapsed}
-                  onToggle={() => toggleCollapse(key)}
+                  isSelected={isGroupSelected}
+                  onToggleCollapse={() => toggleCollapse(key)}
+                  onToggleSelect={(e) => handleGroupClick(key, index, e)}
                 />
               );
             })}
@@ -218,18 +328,28 @@ function DuplicateResultsTable({ groups, totalGroups, totalFiles }: DuplicateRes
   );
 }
 
-function GroupRows({ group, files, isCollapsed, onToggle }: {
+function GroupRows({ group, files, isCollapsed, isSelected, onToggleCollapse, onToggleSelect }: {
   group: DuplicateGroup;
   files: FileItem[];
   isCollapsed: boolean;
-  onToggle: () => void;
+  isSelected: boolean;
+  onToggleCollapse: () => void;
+  onToggleSelect: (e: React.MouseEvent) => void;
 }): React.JSX.Element {
   return (
     <>
       <tr
-        className="border-b border-neutral-700 bg-neutral-800/50 cursor-pointer hover:bg-neutral-800"
-        onClick={onToggle}
+        className={`border-b border-neutral-700 bg-neutral-800/50 cursor-pointer hover:bg-neutral-800 ${isSelected ? 'bg-blue-900/20' : ''}`}
+        onClick={onToggleCollapse}
       >
+        <td className="w-10 px-3 py-2.5" onClick={onToggleSelect}>
+          <input
+            type="checkbox"
+            checked={isSelected}
+            readOnly
+            className="accent-blue-500 pointer-events-none"
+          />
+        </td>
         <td colSpan={5} className="px-4 py-2.5">
           <div className="flex items-center gap-2">
             <span className="text-neutral-400">{isCollapsed ? '▶' : '▼'}</span>
@@ -250,6 +370,7 @@ function GroupRows({ group, files, isCollapsed, onToggle }: {
           key={`${file.relativePath}${file.name}${file.extension}`}
           className="border-b border-neutral-800/30 hover:bg-neutral-800/20"
         >
+          <td className="w-10 px-3 py-2" />
           <td className="px-4 py-2 text-neutral-500 pl-8">{i + 1}</td>
           <td className="px-4 py-2 text-white">{file.name}</td>
           <td className="px-4 py-2 text-neutral-400">{file.extension}</td>

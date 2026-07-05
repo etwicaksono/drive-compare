@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
-import { SelectLocalDirectory, GetDuplicatePatterns, RunDuplicateScan } from '../../wailsjs/go/main/App';
+import { SelectLocalDirectory, GetDuplicatePatterns, RunDuplicateScan, ExportToClipboard, ExportToFile } from '../../wailsjs/go/main/App';
 import DriveFolderPicker from '../components/DriveFolderPicker';
 import DuplicateResultsTable from '../components/DuplicateResultsTable';
 import ErrorBanner from '../components/ErrorBanner';
-import type { DuplicatePatternInfo, DuplicateScanResult } from '../lib/types';
+import ExportModal from '../components/ExportModal';
+import type { DuplicatePatternInfo, DuplicateScanResult, FileItem } from '../lib/types';
+import { buildExportText } from '../lib/types';
+import { makeGroupKey } from '../components/DuplicateResultsTable';
 
 function formatError(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -23,6 +26,9 @@ function DuplicatesPage(): React.JSX.Element {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<DuplicateScanResult | null>(null);
+  const [selectedGroupKeys, setSelectedGroupKeys] = useState<Set<string>>(new Set());
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
 
   useEffect(() => {
     GetDuplicatePatterns()
@@ -68,7 +74,9 @@ function DuplicatesPage(): React.JSX.Element {
   async function handleScan(): Promise<void> {
     setLoading(true);
     setResult(null);
+    setSelectedGroupKeys(new Set());
     setError('');
+    setSuccessMsg('');
 
     try {
       const resp = await RunDuplicateScan(sourceType, sourceID, Array.from(selectedPatterns));
@@ -89,11 +97,69 @@ function DuplicatesPage(): React.JSX.Element {
     }
   }
 
+  async function handleExport(pathSource: 'local' | 'drive', target: 'clipboard' | 'file', contentType: 'items' | 'headers'): Promise<void> {
+    if (!result) return;
+
+    let text: string;
+    let count: number;
+
+    if (contentType === 'headers') {
+      const headerItems: FileItem[] = [];
+      for (const g of result.groups) {
+        if (selectedGroupKeys.has(makeGroupKey(g))) {
+          headerItems.push({ relativePath: g.relativePath, name: g.baseName, extension: g.extension, size: 0 });
+        }
+      }
+      if (headerItems.length === 0) return;
+      const label = sourceType === 'local' ? localDir : driveDirLabel;
+      text = buildExportText(headerItems, pathSource, localDir, label);
+      count = headerItems.length;
+    } else {
+      const selectedFiles: FileItem[] = [];
+      for (const g of result.groups) {
+        if (selectedGroupKeys.has(makeGroupKey(g))) {
+          for (const f of g.files) {
+            selectedFiles.push(f);
+          }
+        }
+      }
+      if (selectedFiles.length === 0) return;
+      const label = sourceType === 'local' ? localDir : driveDirLabel;
+      text = buildExportText(selectedFiles, pathSource, localDir, label);
+      count = selectedFiles.length;
+    }
+
+    try {
+      if (target === 'clipboard') {
+        await ExportToClipboard(text);
+        setSuccessMsg(`Exported ${count} file path${count !== 1 ? 's' : ''} to clipboard`);
+      } else {
+        const path = await ExportToFile(text);
+        if (path) {
+          setSuccessMsg(`Saved ${count} file path${count !== 1 ? 's' : ''} to ${path}`);
+        }
+      }
+    } catch (err) {
+      setError(`Export failed: ${formatError(err)}`);
+    }
+
+    setShowExportModal(false);
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-xl font-semibold">Duplicates</h1>
 
       {error && <ErrorBanner message={error} onDismiss={() => setError('')} />}
+
+      {successMsg && (
+        <div className="flex items-center justify-between rounded-lg border border-green-800/50 bg-green-900/20 px-4 py-3">
+          <p className="text-sm text-green-400">{successMsg}</p>
+          <button type="button" onClick={() => setSuccessMsg('')} className="ml-4 text-sm text-green-500 transition-colors hover:text-green-300">
+            Dismiss
+          </button>
+        </div>
+      )}
 
       <div className="flex flex-col gap-4 rounded-lg border border-neutral-800 bg-neutral-900 p-5">
         <div className="flex flex-col gap-2">
@@ -180,8 +246,21 @@ function DuplicatesPage(): React.JSX.Element {
           groups={result.groups}
           totalGroups={result.totalGroups}
           totalFiles={result.totalFiles}
+          selectedGroupKeys={selectedGroupKeys}
+          onSelectionChange={setSelectedGroupKeys}
+          onExport={() => setShowExportModal(true)}
         />
       )}
+
+      <ExportModal
+        open={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        onExport={handleExport}
+        selectedCount={result ? result.groups.filter((g) => selectedGroupKeys.has(makeGroupKey(g))).length : 0}
+        activeTab={sourceType === 'drive' ? 'driveOnly' : 'localOnly'}
+        showContentOption
+        contentLabels={{ headers: 'Group names (base filenames)', items: 'All files in groups' }}
+      />
 
       <DriveFolderPicker
         open={showDrivePicker}
