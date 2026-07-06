@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"personal-digital-inventory/internal/domain"
+	"drive-compare/internal/domain"
 )
 
 type LocalScanner struct {

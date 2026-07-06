@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"personal-digital-inventory/internal/domain"
+	"drive-compare/internal/domain"
 
 	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/option"

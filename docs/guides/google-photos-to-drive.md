@@ -1,6 +1,6 @@
 # Panduan: Memindahkan Google Photos ke Google Drive
 
-Karena Google Photos API sudah membatasi akses ke library user (sejak April 2025), PDI tidak bisa langsung scan Google Photos. Panduan ini menjelaskan cara memindahkan foto/video dari Google Photos ke Google Drive agar bisa digunakan dengan fitur Compare dan Duplicate Detection di PDI.
+Karena Google Photos API sudah membatasi akses ke library user (sejak April 2025), DriveCompare tidak bisa langsung scan Google Photos. Panduan ini menjelaskan cara memindahkan foto/video dari Google Photos ke Google Drive agar bisa digunakan dengan fitur Compare dan Duplicate Detection di DriveCompare.
 
 ---
 
@@ -34,7 +34,7 @@ Cocok untuk memindahkan **seluruh library** atau album tertentu sekaligus.
 5. **Akses di Google Drive**
    - Buka Google Drive, cari folder **Takeout**.
    - Jika dalam format `.zip` atau `.tgz`, extract terlebih dahulu.
-   - File foto/video sekarang tersedia di Drive dan bisa di-scan menggunakan PDI.
+   - File foto/video sekarang tersedia di Drive dan bisa di-scan menggunakan DriveCompare.
 
 ### Catatan penting:
 - Metadata (tanggal, lokasi) disimpan dalam file `.json` terpisah per foto.
@@ -87,13 +87,13 @@ Cocok untuk **sinkronisasi berkelanjutan** dari perangkat ke Drive.
 
 3. **Scan dengan PDI**
    - Foto sekarang ada di Google Drive.
-   - Gunakan PDI untuk compare folder lokal dengan folder Drive.
+   - Gunakan DriveCompare untuk compare folder lokal dengan folder Drive.
 
 ---
 
 ## Setelah dipindahkan ke Google Drive
 
-Setelah foto/video tersedia di Google Drive, Anda bisa menggunakan semua fitur PDI:
+Setelah foto/video tersedia di Google Drive, Anda bisa menggunakan semua fitur DriveCompare:
 
 - **Compare** — bandingkan folder lokal dengan folder Google Drive untuk menemukan file yang hanya ada di satu tempat.
 - **Duplicate Detection** — scan folder Google Drive untuk menemukan file duplikat berdasarkan pola nama dan ukuran.
@@ -109,5 +109,5 @@ A: Tidak. Google Takeout hanya menyalin, tidak memindahkan. Foto tetap ada di Go
 **Q: Apakah kuota storage bertambah?**
 A: Ya. Jika menggunakan metode "Add to Drive", file akan menempati storage Drive (yang berbagi kuota dengan Google Photos). Jika foto sudah ada di Google Photos, secara efektif storage yang terpakai bisa berlipat.
 
-**Q: Kenapa PDI tidak langsung scan Google Photos?**
+**Q: Kenapa DriveCompare tidak langsung scan Google Photos?**
 A: Sejak April 2025, Google membatasi Photos Library API sehingga hanya bisa mengakses konten yang dibuat oleh aplikasi itu sendiri. Aplikasi pihak ketiga tidak bisa lagi membaca seluruh library foto user.

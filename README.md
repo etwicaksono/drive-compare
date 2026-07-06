@@ -1,6 +1,6 @@
-# Personal Digital Inventory
+# DriveCompare
 
-Desktop application that inventories files across local storage and Google Drive, helping you understand where each file lives. It scans, compares, and reports — it never deletes, uploads, or syncs files automatically.
+Desktop application that compares files across local storage and Google Drive, helping you understand where each file lives and find duplicates. It scans, compares, and reports — it never deletes, uploads, or syncs files automatically.
 
 ## Features
 
@@ -35,7 +35,7 @@ Desktop application that inventories files across local storage and Google Drive
 
 ```bash
 git clone <repo-url>
-cd personal-digital-inventory
+cd drive-compare
 cd frontend && npm install && cd ..
 ```
 

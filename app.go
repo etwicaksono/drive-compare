@@ -6,11 +6,11 @@ import (
 	"log/slog"
 	"os"
 
-	"personal-digital-inventory/internal/domain"
-	"personal-digital-inventory/internal/infrastructure/config"
-	"personal-digital-inventory/internal/infrastructure/gdrive"
-	"personal-digital-inventory/internal/infrastructure/logging"
-	"personal-digital-inventory/internal/infrastructure/scanner"
+	"drive-compare/internal/domain"
+	"drive-compare/internal/infrastructure/config"
+	"drive-compare/internal/infrastructure/gdrive"
+	"drive-compare/internal/infrastructure/logging"
+	"drive-compare/internal/infrastructure/scanner"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )

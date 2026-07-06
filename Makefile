@@ -32,7 +32,7 @@ all: build
 build: wails-build
 
 run:
-	.\build\bin\personal-digital-inventory.exe
+	.\build\bin\drive-compare.exe
 
 clean:
 	$(call RMDIR,$(BE_OUT_DIR))

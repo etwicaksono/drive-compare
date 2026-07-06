@@ -1,4 +1,4 @@
-module personal-digital-inventory
+module drive-compare
 
 go 1.25.8
 

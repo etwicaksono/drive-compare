@@ -5,7 +5,7 @@ function Sidebar(): React.JSX.Element {
     <aside className="flex h-screen w-56 flex-col border-r border-neutral-700 bg-neutral-900">
       <div className="px-4 py-5">
         <h1 className="text-sm font-bold tracking-wide text-neutral-300 uppercase">
-          PDI
+          DriveCompare
         </h1>
       </div>
       <nav className="flex flex-1 flex-col gap-1 px-2">
