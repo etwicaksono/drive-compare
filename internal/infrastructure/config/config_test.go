@@ -17,14 +17,13 @@ func writeTemp(t *testing.T, content string) string {
 }
 
 func TestLoad_ValidConfig(t *testing.T) {
+	t.Setenv("PDI_GOOGLE_CLIENT_ID", "")
+	t.Setenv("PDI_GOOGLE_CLIENT_SECRET", "")
+
 	yaml := `
-database:
-  host: localhost
-  port: 5432
-  user: inventory
-  password: secret
-  name: pdi
-  sslmode: disable
+google_drive:
+  client_id: "test-id"
+  client_secret: "test-secret"
 ignore:
   patterns:
     - node_modules
@@ -38,23 +37,8 @@ logging:
 		t.Fatalf("Load() error: %v", err)
 	}
 
-	if cfg.Database.Host != "localhost" {
-		t.Errorf("Host = %q, want %q", cfg.Database.Host, "localhost")
-	}
-	if cfg.Database.Port != 5432 {
-		t.Errorf("Port = %d, want %d", cfg.Database.Port, 5432)
-	}
-	if cfg.Database.User != "inventory" {
-		t.Errorf("User = %q, want %q", cfg.Database.User, "inventory")
-	}
-	if cfg.Database.Password != "secret" {
-		t.Errorf("Password = %q, want %q", cfg.Database.Password, "secret")
-	}
-	if cfg.Database.Name != "pdi" {
-		t.Errorf("Name = %q, want %q", cfg.Database.Name, "pdi")
-	}
-	if cfg.Database.SSLMode != "disable" {
-		t.Errorf("SSLMode = %q, want %q", cfg.Database.SSLMode, "disable")
+	if cfg.GoogleDrive.ClientID != "test-id" {
+		t.Errorf("ClientID = %q, want %q", cfg.GoogleDrive.ClientID, "test-id")
 	}
 	if len(cfg.Ignore.Patterns) != 2 {
 		t.Errorf("Ignore.Patterns length = %d, want 2", len(cfg.Ignore.Patterns))
@@ -69,12 +53,8 @@ logging:
 
 func TestLoad_DefaultLoggingLevel(t *testing.T) {
 	yaml := `
-database:
-  host: localhost
-  port: 5432
-  user: inventory
-  name: pdi
-  sslmode: disable
+google_drive:
+  token_file: token.json
 `
 	cfg, err := Load(writeTemp(t, yaml))
 	if err != nil {
@@ -86,25 +66,25 @@ database:
 	}
 }
 
-func TestLoad_EnvOverridePassword(t *testing.T) {
+func TestLoad_EnvOverrideGoogleCreds(t *testing.T) {
 	yaml := `
-database:
-  host: localhost
-  port: 5432
-  user: inventory
-  password: original
-  name: pdi
-  sslmode: disable
+google_drive:
+  client_id: "original"
+  client_secret: "original"
 `
-	t.Setenv("PDI_DB_PASSWORD", "from_env")
+	t.Setenv("PDI_GOOGLE_CLIENT_ID", "from_env_id")
+	t.Setenv("PDI_GOOGLE_CLIENT_SECRET", "from_env_secret")
 
 	cfg, err := Load(writeTemp(t, yaml))
 	if err != nil {
 		t.Fatalf("Load() error: %v", err)
 	}
 
-	if cfg.Database.Password != "from_env" {
-		t.Errorf("Password = %q, want %q", cfg.Database.Password, "from_env")
+	if cfg.GoogleDrive.ClientID != "from_env_id" {
+		t.Errorf("ClientID = %q, want %q", cfg.GoogleDrive.ClientID, "from_env_id")
+	}
+	if cfg.GoogleDrive.ClientSecret != "from_env_secret" {
+		t.Errorf("ClientSecret = %q, want %q", cfg.GoogleDrive.ClientSecret, "from_env_secret")
 	}
 }
 
@@ -122,29 +102,8 @@ func TestLoad_InvalidYAML(t *testing.T) {
 	}
 }
 
-func TestLoad_MissingRequiredFields(t *testing.T) {
-	yaml := `
-database:
-  host: ""
-  port: 0
-  user: ""
-  name: ""
-  sslmode: ""
-`
-	_, err := Load(writeTemp(t, yaml))
-	if err == nil {
-		t.Fatal("Load() should return error for missing required fields")
-	}
-}
-
 func TestLoad_InvalidLoggingLevel(t *testing.T) {
 	yaml := `
-database:
-  host: localhost
-  port: 5432
-  user: inventory
-  name: pdi
-  sslmode: disable
 logging:
   level: invalid
 `
@@ -154,24 +113,32 @@ logging:
 	}
 }
 
-func TestLoad_EmptyIgnorePatterns(t *testing.T) {
+func TestLoad_DefaultRespectGitignore(t *testing.T) {
 	yaml := `
-database:
-  host: localhost
-  port: 5432
-  user: inventory
-  name: pdi
-  sslmode: disable
+google_drive:
+  token_file: token.json
 `
 	cfg, err := Load(writeTemp(t, yaml))
 	if err != nil {
 		t.Fatalf("Load() error: %v", err)
 	}
 
-	if len(cfg.Ignore.Patterns) != 0 {
-		t.Errorf("Ignore.Patterns = %v, want empty", cfg.Ignore.Patterns)
-	}
 	if *cfg.Ignore.RespectGitignore != true {
 		t.Errorf("RespectGitignore = %v, want true (default)", *cfg.Ignore.RespectGitignore)
+	}
+}
+
+func TestLoad_DefaultTokenFile(t *testing.T) {
+	yaml := `
+google_drive:
+  client_id: test
+`
+	cfg, err := Load(writeTemp(t, yaml))
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+
+	if cfg.GoogleDrive.TokenFile != "token.json" {
+		t.Errorf("TokenFile = %q, want %q", cfg.GoogleDrive.TokenFile, "token.json")
 	}
 }

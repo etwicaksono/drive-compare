@@ -114,11 +114,9 @@ make be-test-cover
 ├── Makefile                        # Build/dev/test commands
 ├── internal/
 │   ├── domain/
-│   │   ├── entity.go               # FileItem, IgnorePattern
+│   │   ├── entity.go               # FileItem
 │   │   ├── compare.go              # CompareFiles engine
-│   │   ├── duplicate.go            # DuplicatePattern, DetectDuplicates engine
-│   │   └── repository.go           # Repository interfaces
-│   ├── application/                # Use cases (CompareUseCase)
+│   │   └── duplicate.go            # DuplicatePattern, DetectDuplicates engine
 │   └── infrastructure/
 │       ├── config/                 # YAML config loader (IgnoreConfig struct)
 │       ├── gdrive/                 # Google OAuth2 with callback server

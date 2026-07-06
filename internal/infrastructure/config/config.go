@@ -9,7 +9,6 @@ import (
 )
 
 type Config struct {
-	Database    DatabaseConfig    `yaml:"database"`
 	GoogleDrive GoogleDriveConfig `yaml:"google_drive"`
 	Ignore      IgnoreConfig      `yaml:"ignore"`
 	Logging     LoggingConfig     `yaml:"logging"`
@@ -19,15 +18,6 @@ type GoogleDriveConfig struct {
 	ClientID     string `yaml:"client_id"`
 	ClientSecret string `yaml:"client_secret"`
 	TokenFile    string `yaml:"token_file"`
-}
-
-type DatabaseConfig struct {
-	Host     string `yaml:"host"`
-	Port     int    `yaml:"port"`
-	User     string `yaml:"user"`
-	Password string `yaml:"password"`
-	Name     string `yaml:"name"`
-	SSLMode  string `yaml:"sslmode"`
 }
 
 type LoggingConfig struct {
@@ -60,9 +50,6 @@ func Load(path string) (*Config, error) {
 }
 
 func applyEnvOverrides(cfg *Config) {
-	if pw := os.Getenv("PDI_DB_PASSWORD"); pw != "" {
-		cfg.Database.Password = pw
-	}
 	if id := os.Getenv("PDI_GOOGLE_CLIENT_ID"); id != "" {
 		cfg.GoogleDrive.ClientID = id
 	}
@@ -73,22 +60,6 @@ func applyEnvOverrides(cfg *Config) {
 
 func validate(cfg *Config) error {
 	var errs []string
-
-	if cfg.Database.Host == "" {
-		errs = append(errs, "database.host is required")
-	}
-	if cfg.Database.Port == 0 {
-		errs = append(errs, "database.port is required")
-	}
-	if cfg.Database.User == "" {
-		errs = append(errs, "database.user is required")
-	}
-	if cfg.Database.Name == "" {
-		errs = append(errs, "database.name is required")
-	}
-	if cfg.Database.SSLMode == "" {
-		errs = append(errs, "database.sslmode is required")
-	}
 
 	validLevels := map[string]bool{"debug": true, "info": true, "warn": true, "error": true}
 	if cfg.Logging.Level == "" {
