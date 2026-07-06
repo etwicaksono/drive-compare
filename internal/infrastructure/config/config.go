@@ -30,12 +30,25 @@ type IgnoreConfig struct {
 }
 
 func Load(path string) (*Config, error) {
+	var cfg Config
+
 	data, err := os.ReadFile(path)
 	if err != nil {
+		if os.IsNotExist(err) {
+			cfg = defaultConfig()
+			applyEnvOverrides(&cfg)
+			if verr := validate(&cfg); verr != nil {
+				return nil, fmt.Errorf("config validation failed: %w", verr)
+			}
+			if werr := writeDefault(path, &cfg); werr != nil {
+				// non-fatal: config works in memory even if write fails
+				fmt.Fprintf(os.Stderr, "warning: could not write default config to %s: %v\n", path, werr)
+			}
+			return &cfg, nil
+		}
 		return nil, fmt.Errorf("failed to read config file %s: %w", path, err)
 	}
 
-	var cfg Config
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("failed to parse config file %s: %w", path, err)
 	}
@@ -47,6 +60,30 @@ func Load(path string) (*Config, error) {
 	}
 
 	return &cfg, nil
+}
+
+func defaultConfig() Config {
+	respectGitignore := true
+	return Config{
+		GoogleDrive: GoogleDriveConfig{
+			TokenFile: "token.json",
+		},
+		Ignore: IgnoreConfig{
+			Patterns:         []string{"node_modules", ".git", "Thumbs.db", "desktop.ini", "*.tmp", "*.cache"},
+			RespectGitignore: &respectGitignore,
+		},
+		Logging: LoggingConfig{
+			Level: "info",
+		},
+	}
+}
+
+func writeDefault(path string, cfg *Config) error {
+	data, err := yaml.Marshal(cfg)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0644)
 }
 
 func applyEnvOverrides(cfg *Config) {

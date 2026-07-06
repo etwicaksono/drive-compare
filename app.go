@@ -30,10 +30,11 @@ func (a *App) startup(ctx context.Context) {
 
 	cfg, err := config.Load("config.yaml")
 	if err != nil {
-		slog.Warn("Failed to load config, starting with limited functionality", "error", err)
+		slog.Error("Failed to load config", "error", err)
 		return
 	}
 	a.cfg = cfg
+	slog.Info("Config loaded")
 
 	if cfg.GoogleDrive.ClientID == "" || cfg.GoogleDrive.ClientSecret == "" {
 		slog.Warn("Google Drive credentials not configured. Set PDI_GOOGLE_CLIENT_ID and PDI_GOOGLE_CLIENT_SECRET environment variables, or fill google_drive.client_id and google_drive.client_secret in config.yaml")

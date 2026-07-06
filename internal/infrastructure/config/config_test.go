@@ -88,10 +88,40 @@ google_drive:
 	}
 }
 
-func TestLoad_MissingFile(t *testing.T) {
-	_, err := Load("/nonexistent/config.yaml")
-	if err == nil {
-		t.Fatal("Load() should return error for missing file")
+func TestLoad_MissingFileUnwritablePath(t *testing.T) {
+	cfg, err := Load("/nonexistent/dir/config.yaml")
+	if err != nil {
+		t.Fatalf("Load() should not error even if write fails: %v", err)
+	}
+	if cfg.Logging.Level != "info" {
+		t.Errorf("Level = %q, want %q", cfg.Logging.Level, "info")
+	}
+}
+
+func TestLoad_MissingFileGeneratesDefault(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+
+	if cfg.Logging.Level != "info" {
+		t.Errorf("Level = %q, want %q", cfg.Logging.Level, "info")
+	}
+	if cfg.GoogleDrive.TokenFile != "token.json" {
+		t.Errorf("TokenFile = %q, want %q", cfg.GoogleDrive.TokenFile, "token.json")
+	}
+	if len(cfg.Ignore.Patterns) == 0 {
+		t.Error("Ignore.Patterns should have defaults")
+	}
+	if *cfg.Ignore.RespectGitignore != true {
+		t.Errorf("RespectGitignore = %v, want true", *cfg.Ignore.RespectGitignore)
+	}
+
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		t.Error("config.yaml should have been created")
 	}
 }
 
