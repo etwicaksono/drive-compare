@@ -11,6 +11,7 @@ function Sidebar(): React.JSX.Element {
       <nav className="flex flex-1 flex-col gap-1 px-2">
         <SidebarLink to="/" label="Compare" />
         <SidebarLink to="/duplicates" label="Duplicates" />
+        <SidebarLink to="/resize-audit" label="Resize Audit" />
         <SidebarLink to="/settings" label="Settings" />
       </nav>
     </aside>

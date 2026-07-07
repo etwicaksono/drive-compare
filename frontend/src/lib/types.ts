@@ -64,3 +64,11 @@ export interface DuplicateScanResult {
   totalGroups: number;
   totalFiles: number;
 }
+
+export type ResizeAuditTabKey = 'pending' | 'resized' | 'extraRes';
+
+export interface ResizeAuditResult {
+  pending: FileItem[];
+  resized: FileItem[];
+  extraRes: FileItem[];
+}

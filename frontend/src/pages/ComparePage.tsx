@@ -55,6 +55,12 @@ function ComparePage(): React.JSX.Element {
     both: 'Both',
   };
 
+  const tabTooltips: Record<TabKey, string> = {
+    sourceAOnly: 'Files that exist only in the first source',
+    sourceBOnly: 'Files that exist only in the second source',
+    both: 'Files that exist in both sources',
+  };
+
   async function handleBrowseLocal(target: 'a' | 'b'): Promise<void> {
     try {
       setError('');
@@ -200,6 +206,7 @@ function ComparePage(): React.JSX.Element {
           onSelectionChange={handleSelectionChange}
           onExport={() => setShowExportModal(true)}
           tabLabels={tabLabels}
+          tabTooltips={tabTooltips}
         />
       )}
 

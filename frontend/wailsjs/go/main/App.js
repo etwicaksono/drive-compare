@@ -62,6 +62,10 @@ export function RunDuplicateScan(arg1, arg2, arg3) {
   return window['go']['main']['App']['RunDuplicateScan'](arg1, arg2, arg3);
 }
 
+export function RunResizeAudit(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['RunResizeAudit'](arg1, arg2, arg3, arg4, arg5);
+}
+
 export function SelectLocalDirectory() {
   return window['go']['main']['App']['SelectLocalDirectory']();
 }

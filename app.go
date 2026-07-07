@@ -389,3 +389,45 @@ func (a *App) RunDuplicateScan(sourceType string, sourceID string, patternIDs []
 
 	return resp, nil
 }
+
+type ResizeAuditResponse struct {
+	Pending  []CompareResultItem `json:"pending"`
+	Resized  []CompareResultItem `json:"resized"`
+	ExtraRes []CompareResultItem `json:"extraRes"`
+}
+
+func (a *App) RunResizeAudit(sourceType string, sourceID string, resizedType string, resizedID string, suffix string) (*ResizeAuditResponse, error) {
+	if suffix == "" {
+		return nil, fmt.Errorf("suffix is required")
+	}
+
+	slog.Info("Starting resize audit", "sourceType", sourceType, "resizedType", resizedType, "suffix", suffix)
+
+	sourceFiles, err := a.scanSource(sourceType, sourceID)
+	if err != nil {
+		return nil, fmt.Errorf("source scan failed: %w", err)
+	}
+	slog.Info("Source scan complete", "files", len(sourceFiles))
+
+	resizedFiles, err := a.scanSource(resizedType, resizedID)
+	if err != nil {
+		return nil, fmt.Errorf("resized scan failed: %w", err)
+	}
+	slog.Info("Resized scan complete", "files", len(resizedFiles))
+
+	result := domain.ResizeAudit(sourceFiles, resizedFiles, suffix)
+
+	resp := &ResizeAuditResponse{
+		Pending:  toResultItems(result.Pending),
+		Resized:  toResultItems(result.Resized),
+		ExtraRes: toResultItems(result.ExtraRes),
+	}
+
+	slog.Info("Resize audit complete",
+		"pending", len(resp.Pending),
+		"resized", len(resp.Resized),
+		"extraRes", len(resp.ExtraRes),
+	)
+
+	return resp, nil
+}

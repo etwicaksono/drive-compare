@@ -32,6 +32,8 @@ export function RunComparison(arg1:string,arg2:string,arg3:string,arg4:string):P
 
 export function RunDuplicateScan(arg1:string,arg2:string,arg3:Array<string>):Promise<main.DuplicateScanResponse>;
 
+export function RunResizeAudit(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<main.ResizeAuditResponse>;
+
 export function SelectLocalDirectory():Promise<string>;
 
 export function SetRespectGitignore(arg1:boolean):Promise<void>;

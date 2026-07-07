@@ -10,6 +10,7 @@ interface ResultsTableProps {
   onSelectionChange: (keys: Set<string>) => void;
   onExport: () => void;
   tabLabels: Record<TabKey, string>;
+  tabTooltips?: Record<TabKey, string>;
 }
 
 type SortField = 'name' | 'extension' | 'size' | 'relativePath';
@@ -78,7 +79,7 @@ function SortIndicator({ field, sort }: { field: SortField; sort: SortState }): 
 
 const BATCH_SIZE = 50;
 
-function ResultsTable({ result, activeTab, onTabChange, selectedKeys, onSelectionChange, onExport, tabLabels }: ResultsTableProps): React.JSX.Element {
+function ResultsTable({ result, activeTab, onTabChange, selectedKeys, onSelectionChange, onExport, tabLabels, tabTooltips }: ResultsTableProps): React.JSX.Element {
   const [sort, setSort] = useState<SortState>({ field: 'name', direction: 'asc' });
   const [search, setSearch] = useState('');
   const [selectedExtensions, setSelectedExtensions] = useState<Set<string>>(new Set());
@@ -205,6 +206,7 @@ function ResultsTable({ result, activeTab, onTabChange, selectedKeys, onSelectio
             key={key}
             type="button"
             onClick={() => onTabChange(key)}
+            title={tabTooltips?.[key]}
             className={`px-5 py-3 text-sm font-medium transition-colors ${
               activeTab === key
                 ? 'border-b-2 border-blue-500 text-white'
