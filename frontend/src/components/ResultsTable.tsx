@@ -11,7 +11,16 @@ interface ResultsTableProps {
   onExport: () => void;
   tabLabels: Record<TabKey, string>;
   tabTooltips?: Record<TabKey, string>;
+  showStatusColumn?: boolean;
 }
+
+type StatusFilter = 'all' | 'active' | 'deleted';
+
+const STATUS_FILTER_LABELS: Record<StatusFilter, string> = {
+  all: 'All',
+  active: 'Active only',
+  deleted: 'Deleted only',
+};
 
 type SortField = 'name' | 'extension' | 'size' | 'relativePath';
 type SortDirection = 'asc' | 'desc';
@@ -54,12 +63,19 @@ function filterItems(
   search: string,
   extensions: Set<string>,
   sizeRangeIndex: number,
+  status: StatusFilter,
 ): FileItem[] {
   return items.filter((item) => {
     if (search && !item.name.toLowerCase().includes(search.toLowerCase())) {
       return false;
     }
     if (extensions.size > 0 && !extensions.has(item.extension)) {
+      return false;
+    }
+    if (status === 'active' && item.deleted) {
+      return false;
+    }
+    if (status === 'deleted' && !item.deleted) {
       return false;
     }
     const range = SIZE_RANGES[sizeRangeIndex];
@@ -79,11 +95,12 @@ function SortIndicator({ field, sort }: { field: SortField; sort: SortState }): 
 
 const BATCH_SIZE = 50;
 
-function ResultsTable({ result, activeTab, onTabChange, selectedKeys, onSelectionChange, onExport, tabLabels, tabTooltips }: ResultsTableProps): React.JSX.Element {
+function ResultsTable({ result, activeTab, onTabChange, selectedKeys, onSelectionChange, onExport, tabLabels, tabTooltips, showStatusColumn = false }: ResultsTableProps): React.JSX.Element {
   const [sort, setSort] = useState<SortState>({ field: 'name', direction: 'asc' });
   const [search, setSearch] = useState('');
   const [selectedExtensions, setSelectedExtensions] = useState<Set<string>>(new Set());
   const [sizeRangeIndex, setSizeRangeIndex] = useState(0);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastClickedIndex = useRef<number>(-1);
@@ -99,8 +116,8 @@ function ResultsTable({ result, activeTab, onTabChange, selectedKeys, onSelectio
   }, [items]);
 
   const filtered = useMemo(
-    () => filterItems(items, search, selectedExtensions, sizeRangeIndex),
-    [items, search, selectedExtensions, sizeRangeIndex],
+    () => filterItems(items, search, selectedExtensions, sizeRangeIndex, statusFilter),
+    [items, search, selectedExtensions, sizeRangeIndex, statusFilter],
   );
 
   const sorted = useMemo(() => sortItems(filtered, sort), [filtered, sort]);
@@ -122,7 +139,7 @@ function ResultsTable({ result, activeTab, onTabChange, selectedKeys, onSelectio
 
   useEffect(() => {
     setVisibleCount(BATCH_SIZE);
-  }, [activeTab, search, selectedExtensions, sizeRangeIndex, sort]);
+  }, [activeTab, search, selectedExtensions, sizeRangeIndex, statusFilter, sort]);
 
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;
@@ -269,6 +286,21 @@ function ResultsTable({ result, activeTab, onTabChange, selectedKeys, onSelectio
           </select>
         </div>
 
+        {showStatusColumn && (
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-neutral-500">Status:</span>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+              className="rounded-md border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs text-neutral-300 outline-none"
+            >
+              {(Object.keys(STATUS_FILTER_LABELS) as StatusFilter[]).map((key) => (
+                <option key={key} value={key}>{STATUS_FILTER_LABELS[key]}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <span className="ml-auto text-xs text-neutral-500">
           {sorted.length.toLocaleString()} of {items.length.toLocaleString()} files
         </span>
@@ -316,12 +348,15 @@ function ResultsTable({ result, activeTab, onTabChange, selectedKeys, onSelectio
                   <SortIndicator field={col.key} sort={sort} />
                 </th>
               ))}
+              {showStatusColumn && (
+                <th className="sticky top-0 z-10 w-24 bg-neutral-900 px-4 py-3 font-medium">Status</th>
+              )}
             </tr>
           </thead>
           <tbody>
             {visible.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-neutral-500">
+                <td colSpan={showStatusColumn ? 6 : 5} className="px-4 py-8 text-center text-neutral-500">
                   No files found.
                 </td>
               </tr>
@@ -351,6 +386,15 @@ function ResultsTable({ result, activeTab, onTabChange, selectedKeys, onSelectio
                     <td className="px-4 py-2.5 text-neutral-400">{item.extension}</td>
                     <td className="px-4 py-2.5 text-neutral-400">{formatSize(item.size)}</td>
                     <td className="px-4 py-2.5 text-neutral-500">{item.relativePath || '/'}</td>
+                    {showStatusColumn && (
+                      <td className="w-24 px-4 py-2.5">
+                        {item.deleted ? (
+                          <span className="text-amber-500">Deleted</span>
+                        ) : (
+                          <span className="text-neutral-500">Active</span>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 );
               })

@@ -4,8 +4,8 @@ import ResultsTable from '../components/ResultsTable';
 import ErrorBanner from '../components/ErrorBanner';
 import DriveFolderPicker from '../components/DriveFolderPicker';
 import ExportModal from '../components/ExportModal';
-import type { ResizeAuditResult, ResizeAuditTabKey, FileItem } from '../lib/types';
-import { getItemKey, buildExportText } from '../lib/types';
+import type { ResizeAuditResult, ResizeAuditTabKey, FileItem, DriveScope } from '../lib/types';
+import { getItemKey, buildExportText, DRIVE_SCOPE_LABELS } from '../lib/types';
 
 function formatError(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -19,6 +19,7 @@ interface SourceState {
   localDir: string;
   driveId: string;
   driveLabel: string;
+  scope: DriveScope;
 }
 
 const EMPTY_SELECTION: Record<ResizeAuditTabKey, Set<string>> = {
@@ -28,8 +29,8 @@ const EMPTY_SELECTION: Record<ResizeAuditTabKey, Set<string>> = {
 };
 
 function ResizeAuditPage(): React.JSX.Element {
-  const [sourceDir, setSourceDir] = useState<SourceState>({ type: 'local', localDir: '', driveId: '', driveLabel: '' });
-  const [resizedDir, setResizedDir] = useState<SourceState>({ type: 'local', localDir: '', driveId: '', driveLabel: '' });
+  const [sourceDir, setSourceDir] = useState<SourceState>({ type: 'local', localDir: '', driveId: '', driveLabel: '', scope: 'active' });
+  const [resizedDir, setResizedDir] = useState<SourceState>({ type: 'local', localDir: '', driveId: '', driveLabel: '', scope: 'active' });
   const [suffix, setSuffix] = useState('_resized');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ResizeAuditResult | null>(null);
@@ -56,6 +57,10 @@ function ResizeAuditPage(): React.JSX.Element {
     sourceBOnly: result.extraRes,
     both: result.resized,
   } : null;
+
+  const hasDeletedItems = resultForTable
+    ? [...resultForTable.sourceAOnly, ...resultForTable.sourceBOnly, ...resultForTable.both].some((item) => item.deleted)
+    : false;
 
   const tabKeyMap: Record<ResizeAuditTabKey, 'sourceAOnly' | 'sourceBOnly' | 'both'> = {
     pending: 'sourceAOnly',
@@ -114,7 +119,7 @@ function ResizeAuditPage(): React.JSX.Element {
     setSelections({ pending: new Set(), resized: new Set(), extraRes: new Set() });
 
     try {
-      const resp = await RunResizeAudit(sourceDir.type, sourceID, resizedDir.type, resizedID, suffix);
+      const resp = await RunResizeAudit(sourceDir.type, sourceID, sourceDir.scope, resizedDir.type, resizedID, resizedDir.scope, suffix);
       setResult({
         pending: resp.pending ?? [],
         resized: resp.resized ?? [],
@@ -235,6 +240,7 @@ function ResizeAuditPage(): React.JSX.Element {
           onExport={() => setShowExportModal(true)}
           tabLabels={tableTabLabels}
           tabTooltips={tableTabTooltips}
+          showStatusColumn={hasDeletedItems}
         />
       )}
 
@@ -272,13 +278,31 @@ function SourceRow({ label, source, onChange, onBrowseLocal, onBrowseDrive, disa
       <div className="flex gap-2">
         <select
           value={source.type}
-          onChange={(e) => onChange({ ...source, type: e.target.value as SourceType })}
+          onChange={(e) => {
+            const type = e.target.value as SourceType;
+            onChange({ ...source, type, scope: type === 'local' ? 'active' : source.scope });
+          }}
           disabled={disabled}
           className="w-28 rounded-md border border-neutral-700 bg-neutral-800 px-2 py-2 text-sm text-neutral-300 outline-none disabled:opacity-50"
         >
           <option value="local">Local</option>
           <option value="drive">Drive</option>
         </select>
+        {source.type === 'drive' && (
+          <select
+            value={source.scope}
+            onChange={(e) => onChange({ ...source, scope: e.target.value as DriveScope })}
+            disabled={disabled}
+            title="Which Drive files to include in the scan"
+            className="w-40 rounded-md border border-neutral-700 bg-neutral-800 px-2 py-2 text-sm text-neutral-300 outline-none disabled:opacity-50"
+          >
+            {(Object.keys(DRIVE_SCOPE_LABELS) as DriveScope[]).map((scope) => (
+              <option key={scope} value={scope}>
+                {DRIVE_SCOPE_LABELS[scope]}
+              </option>
+            ))}
+          </select>
+        )}
         <input
           type="text"
           value={displayValue}

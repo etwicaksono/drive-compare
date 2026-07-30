@@ -60,6 +60,9 @@ func TestLocalScanner_SingleFile(t *testing.T) {
 	if item.RelativePath != "" {
 		t.Errorf("RelativePath = %q, want %q", item.RelativePath, "")
 	}
+	if item.Deleted {
+		t.Error("Deleted = true, want false for local files")
+	}
 }
 
 func TestLocalScanner_NestedDirectories(t *testing.T) {

@@ -5,6 +5,7 @@ export namespace main {
 	    name: string;
 	    extension: string;
 	    size: number;
+	    deleted: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new CompareResultItem(source);
@@ -16,6 +17,7 @@ export namespace main {
 	        this.name = source["name"];
 	        this.extension = source["extension"];
 	        this.size = source["size"];
+	        this.deleted = source["deleted"];
 	    }
 	}
 	export class CompareResponse {

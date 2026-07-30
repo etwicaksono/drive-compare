@@ -1,7 +1,9 @@
-.PHONY: all build run clean \
+.PHONY: help all build run clean \
 	fe-install fe-build fe-run fe-lint fe-fmt \
 	be-fmt be-test \
 	dev wails-build
+
+.DEFAULT_GOAL := help
 
 # --------------------------------------------------
 # Variables
@@ -23,6 +25,39 @@ WAILS  := wails
 MKDIR   = mkdir -p $(1)
 RMDIR   = rm -rf $(1)
 endif
+
+# --------------------------------------------------
+# Help
+# --------------------------------------------------
+help:
+	@echo Drive Compare - available commands:
+	@cmd /c echo.
+	@echo   General:
+	@echo     make help            Show this help message
+	@echo     make all             Build the full app (default: build)
+	@echo     make build           Build the full app via Wails
+	@echo     make run             Run the built executable
+	@echo     make clean           Remove build/output artifacts
+	@cmd /c echo.
+	@echo   Frontend:
+	@echo     make fe-install      Install frontend dependencies
+	@echo     make fe-build        Build the frontend
+	@echo     make fe-run          Run the frontend dev server
+	@echo     make fe-lint         Lint the frontend
+	@echo     make fe-lint-fix     Lint and auto-fix the frontend
+	@echo     make fe-fmt          Format frontend sources
+	@echo     make fe-fmt-check    Check frontend formatting
+	@cmd /c echo.
+	@echo   Backend:
+	@echo     make be-fmt          Format Go sources
+	@echo     make be-fmt-check    Check Go formatting
+	@echo     make be-test         Run Go tests
+	@echo     make be-test-cover   Run Go tests with coverage report
+	@echo     make be-lint         Lint Go sources
+	@cmd /c echo.
+	@echo   Wails (full app):
+	@echo     make dev             Run the app in dev mode
+	@echo     make wails-build     Build the app via Wails
 
 # --------------------------------------------------
 # All

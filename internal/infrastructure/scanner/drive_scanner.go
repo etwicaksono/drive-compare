@@ -3,15 +3,15 @@ package scanner
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"path/filepath"
 	"strings"
 
 	"drive-compare/internal/domain"
 
 	"google.golang.org/api/drive/v3"
+	"google.golang.org/api/googleapi"
 	"google.golang.org/api/option"
-
-	"net/http"
 )
 
 type DriveAPI interface {
@@ -31,11 +31,19 @@ func NewRealDriveAPI(client *http.Client) (*realDriveAPI, error) {
 	return &realDriveAPI{service: srv}, nil
 }
 
+const (
+	defaultListFields = "nextPageToken, files(id, name, size, mimeType, trashed)"
+	defaultGetFields  = "id, name, mimeType, trashed"
+)
+
 func (r *realDriveAPI) ListFiles(ctx context.Context, query string, fields string, pageToken string) ([]*drive.File, string, error) {
+	if fields == "" {
+		fields = defaultListFields
+	}
 	call := r.service.Files.List().
 		Context(ctx).
 		Q(query).
-		Fields("nextPageToken", "files(id, name, size, mimeType)").
+		Fields(googleapi.Field(fields)).
 		PageSize(1000)
 
 	if pageToken != "" {
@@ -51,16 +59,33 @@ func (r *realDriveAPI) ListFiles(ctx context.Context, query string, fields strin
 }
 
 func (r *realDriveAPI) GetFile(ctx context.Context, fileID string) (*drive.File, error) {
-	return r.service.Files.Get(fileID).Context(ctx).Fields("id, name, mimeType").Do()
+	return r.service.Files.Get(fileID).Context(ctx).Fields(googleapi.Field(defaultGetFields)).Do()
 }
+
+type TrashScope string
+
+const (
+	ScopeActive  TrashScope = "active"
+	ScopeTrashed TrashScope = "trashed"
+	ScopeAll     TrashScope = "all"
+)
 
 type DriveScanner struct {
 	api            DriveAPI
 	ignorePatterns []string
+	scope          TrashScope
 }
 
-func NewDriveScanner(api DriveAPI, ignorePatterns []string) *DriveScanner {
-	return &DriveScanner{api: api, ignorePatterns: ignorePatterns}
+func NewDriveScanner(api DriveAPI, ignorePatterns []string, scope TrashScope) (*DriveScanner, error) {
+	if scope == "" {
+		scope = ScopeActive
+	}
+	switch scope {
+	case ScopeActive, ScopeTrashed, ScopeAll:
+	default:
+		return nil, fmt.Errorf("invalid drive scope %q", scope)
+	}
+	return &DriveScanner{api: api, ignorePatterns: ignorePatterns, scope: scope}, nil
 }
 
 func (s *DriveScanner) Scan(ctx context.Context, folderID string) ([]domain.FileItem, error) {
@@ -72,8 +97,19 @@ func (s *DriveScanner) Scan(ctx context.Context, folderID string) ([]domain.File
 	return items, nil
 }
 
+func (s *DriveScanner) trashPredicate() string {
+	switch s.scope {
+	case ScopeTrashed:
+		return " and trashed = true"
+	case ScopeAll:
+		return ""
+	default:
+		return " and trashed = false"
+	}
+}
+
 func (s *DriveScanner) scanFolder(ctx context.Context, folderID string, relPath string, items *[]domain.FileItem) error {
-	query := fmt.Sprintf("'%s' in parents and trashed = false", folderID)
+	query := fmt.Sprintf("'%s' in parents%s", folderID, s.trashPredicate())
 	var pageToken string
 
 	for {
@@ -81,7 +117,7 @@ func (s *DriveScanner) scanFolder(ctx context.Context, folderID string, relPath 
 			return ctx.Err()
 		}
 
-		files, nextToken, err := s.api.ListFiles(ctx, query, "", pageToken)
+		files, nextToken, err := s.api.ListFiles(ctx, query, defaultListFields, pageToken)
 		if err != nil {
 			return fmt.Errorf("failed to list files in folder %s: %w", folderID, err)
 		}
@@ -110,6 +146,7 @@ func (s *DriveScanner) scanFolder(ctx context.Context, folderID string, relPath 
 				Name:         name,
 				Extension:    ext,
 				Size:         f.Size,
+				Deleted:      f.Trashed,
 			})
 		}
 

@@ -3,7 +3,16 @@ export interface FileItem {
   name: string;
   extension: string;
   size: number;
+  deleted: boolean;
 }
+
+export type DriveScope = 'active' | 'trashed' | 'all';
+
+export const DRIVE_SCOPE_LABELS: Record<DriveScope, string> = {
+  active: 'Active files',
+  trashed: 'Deleted (Trash)',
+  all: 'Active + Deleted',
+};
 
 export interface CompareResult {
   sourceAOnly: FileItem[];
@@ -22,8 +31,10 @@ export function formatSize(bytes: number): string {
   return `${value.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
 }
 
+// The deleted flag is part of the key so an active file and its trashed
+// namesake stay independently selectable when scope is "all".
 export function getItemKey(item: FileItem): string {
-  return `${item.relativePath}${item.name}${item.extension}`;
+  return `${item.relativePath}${item.name}${item.extension}${item.deleted ? '#deleted' : ''}`;
 }
 
 export function buildLocalPath(localDir: string, item: FileItem): string {
@@ -43,7 +54,7 @@ export function buildExportText(
 ): string {
   const builder = pathSource === 'local' ? buildLocalPath : buildDrivePath;
   const base = pathSource === 'local' ? localDir : driveLabel;
-  return items.map((item) => builder(base, item)).join('\n');
+  return items.map((item) => `${builder(base, item)}${item.deleted ? ' [deleted]' : ''}`).join('\n');
 }
 
 export interface DuplicatePatternInfo {

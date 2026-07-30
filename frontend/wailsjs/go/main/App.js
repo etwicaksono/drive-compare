@@ -54,16 +54,16 @@ export function RemoveIgnorePattern(arg1) {
   return window['go']['main']['App']['RemoveIgnorePattern'](arg1);
 }
 
-export function RunComparison(arg1, arg2, arg3, arg4) {
-  return window['go']['main']['App']['RunComparison'](arg1, arg2, arg3, arg4);
+export function RunComparison(arg1, arg2, arg3, arg4, arg5, arg6) {
+  return window['go']['main']['App']['RunComparison'](arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
-export function RunDuplicateScan(arg1, arg2, arg3) {
-  return window['go']['main']['App']['RunDuplicateScan'](arg1, arg2, arg3);
+export function RunDuplicateScan(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['RunDuplicateScan'](arg1, arg2, arg3, arg4);
 }
 
-export function RunResizeAudit(arg1, arg2, arg3, arg4, arg5) {
-  return window['go']['main']['App']['RunResizeAudit'](arg1, arg2, arg3, arg4, arg5);
+export function RunResizeAudit(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
+  return window['go']['main']['App']['RunResizeAudit'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
 }
 
 export function SelectLocalDirectory() {

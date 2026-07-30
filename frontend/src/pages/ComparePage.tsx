@@ -4,8 +4,8 @@ import ResultsTable from '../components/ResultsTable';
 import ErrorBanner from '../components/ErrorBanner';
 import DriveFolderPicker from '../components/DriveFolderPicker';
 import ExportModal from '../components/ExportModal';
-import type { CompareResult, TabKey, FileItem } from '../lib/types';
-import { getItemKey, buildExportText } from '../lib/types';
+import type { CompareResult, TabKey, FileItem, DriveScope } from '../lib/types';
+import { getItemKey, buildExportText, DRIVE_SCOPE_LABELS } from '../lib/types';
 
 function formatError(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -19,6 +19,7 @@ interface SourceState {
   localDir: string;
   driveId: string;
   driveLabel: string;
+  scope: DriveScope;
 }
 
 const EMPTY_SELECTION: Record<TabKey, Set<string>> = {
@@ -33,8 +34,8 @@ function sourceLabel(s: SourceState): string {
 }
 
 function ComparePage(): React.JSX.Element {
-  const [sourceA, setSourceA] = useState<SourceState>({ type: 'local', localDir: '', driveId: '', driveLabel: '' });
-  const [sourceB, setSourceB] = useState<SourceState>({ type: 'drive', localDir: '', driveId: '', driveLabel: '' });
+  const [sourceA, setSourceA] = useState<SourceState>({ type: 'local', localDir: '', driveId: '', driveLabel: '', scope: 'active' });
+  const [sourceB, setSourceB] = useState<SourceState>({ type: 'drive', localDir: '', driveId: '', driveLabel: '', scope: 'active' });
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<CompareResult | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>('sourceAOnly');
@@ -60,6 +61,10 @@ function ComparePage(): React.JSX.Element {
     sourceBOnly: 'Files that exist only in the second source',
     both: 'Files that exist in both sources',
   };
+
+  const hasDeletedItems = result
+    ? [...result.sourceAOnly, ...result.sourceBOnly, ...result.both].some((item) => item.deleted)
+    : false;
 
   async function handleBrowseLocal(target: 'a' | 'b'): Promise<void> {
     try {
@@ -94,7 +99,7 @@ function ComparePage(): React.JSX.Element {
     setSelections({ sourceAOnly: new Set(), sourceBOnly: new Set(), both: new Set() });
 
     try {
-      const resp = await RunComparison(sourceA.type, sourceAID, sourceB.type, sourceBID);
+      const resp = await RunComparison(sourceA.type, sourceAID, sourceA.scope, sourceB.type, sourceBID, sourceB.scope);
       setResult({
         sourceAOnly: resp.sourceAOnly ?? [],
         sourceBOnly: resp.sourceBOnly ?? [],
@@ -207,6 +212,7 @@ function ComparePage(): React.JSX.Element {
           onExport={() => setShowExportModal(true)}
           tabLabels={tabLabels}
           tabTooltips={tabTooltips}
+          showStatusColumn={hasDeletedItems}
         />
       )}
 
@@ -244,13 +250,31 @@ function SourceRow({ label, source, onChange, onBrowseLocal, onBrowseDrive, disa
       <div className="flex gap-2">
         <select
           value={source.type}
-          onChange={(e) => onChange({ ...source, type: e.target.value as SourceType })}
+          onChange={(e) => {
+            const type = e.target.value as SourceType;
+            onChange({ ...source, type, scope: type === 'local' ? 'active' : source.scope });
+          }}
           disabled={disabled}
           className="w-28 rounded-md border border-neutral-700 bg-neutral-800 px-2 py-2 text-sm text-neutral-300 outline-none disabled:opacity-50"
         >
           <option value="local">Local</option>
           <option value="drive">Drive</option>
         </select>
+        {source.type === 'drive' && (
+          <select
+            value={source.scope}
+            onChange={(e) => onChange({ ...source, scope: e.target.value as DriveScope })}
+            disabled={disabled}
+            title="Which Drive files to include in the scan"
+            className="w-40 rounded-md border border-neutral-700 bg-neutral-800 px-2 py-2 text-sm text-neutral-300 outline-none disabled:opacity-50"
+          >
+            {(Object.keys(DRIVE_SCOPE_LABELS) as DriveScope[]).map((scope) => (
+              <option key={scope} value={scope}>
+                {DRIVE_SCOPE_LABELS[scope]}
+              </option>
+            ))}
+          </select>
+        )}
         <input
           type="text"
           value={displayValue}

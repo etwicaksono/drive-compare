@@ -85,6 +85,7 @@ func (s *LocalScanner) Scan(ctx context.Context, rootDir string) ([]domain.FileI
 			Name:         fileName,
 			Extension:    ext,
 			Size:         info.Size(),
+			Deleted:      false,
 		})
 
 		return nil

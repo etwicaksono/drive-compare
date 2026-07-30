@@ -200,6 +200,7 @@ type CompareResultItem struct {
 	Name         string `json:"name"`
 	Extension    string `json:"extension"`
 	Size         int64  `json:"size"`
+	Deleted      bool   `json:"deleted"`
 }
 
 type CompareResponse struct {
@@ -208,7 +209,7 @@ type CompareResponse struct {
 	Both        []CompareResultItem `json:"both"`
 }
 
-func (a *App) scanSource(sourceType string, sourceID string) ([]domain.FileItem, error) {
+func (a *App) scanSource(sourceType string, sourceID string, scope string) ([]domain.FileItem, error) {
 	switch sourceType {
 	case "local":
 		if sourceID == "" {
@@ -231,23 +232,27 @@ func (a *App) scanSource(sourceType string, sourceID string) ([]domain.FileItem,
 		if err != nil {
 			return nil, fmt.Errorf("failed to create Drive API: %w", err)
 		}
-		s := scanner.NewDriveScanner(api, a.cfg.Ignore.Patterns)
+		s, err := scanner.NewDriveScanner(api, a.cfg.Ignore.Patterns, scanner.TrashScope(scope))
+		if err != nil {
+			return nil, fmt.Errorf("%w, must be \"active\", \"trashed\", or \"all\"", err)
+		}
+		slog.Info("Scanning Drive folder", "folderID", sourceID, "scope", scope)
 		return s.Scan(a.ctx, sourceID)
 	default:
 		return nil, fmt.Errorf("invalid source type %q, must be \"local\" or \"drive\"", sourceType)
 	}
 }
 
-func (a *App) RunComparison(sourceTypeA string, sourceIDA string, sourceTypeB string, sourceIDB string) (*CompareResponse, error) {
-	slog.Info("Starting comparison", "sourceA", sourceTypeA, "sourceB", sourceTypeB)
+func (a *App) RunComparison(sourceTypeA string, sourceIDA string, scopeA string, sourceTypeB string, sourceIDB string, scopeB string) (*CompareResponse, error) {
+	slog.Info("Starting comparison", "sourceA", sourceTypeA, "scopeA", scopeA, "sourceB", sourceTypeB, "scopeB", scopeB)
 
-	filesA, err := a.scanSource(sourceTypeA, sourceIDA)
+	filesA, err := a.scanSource(sourceTypeA, sourceIDA, scopeA)
 	if err != nil {
 		return nil, fmt.Errorf("source A scan failed: %w", err)
 	}
 	slog.Info("Source A scan complete", "type", sourceTypeA, "files", len(filesA))
 
-	filesB, err := a.scanSource(sourceTypeB, sourceIDB)
+	filesB, err := a.scanSource(sourceTypeB, sourceIDB, scopeB)
 	if err != nil {
 		return nil, fmt.Errorf("source B scan failed: %w", err)
 	}
@@ -278,6 +283,7 @@ func toResultItems(items []domain.FileItem) []CompareResultItem {
 			Name:         item.Name,
 			Extension:    item.Extension,
 			Size:         item.Size,
+			Deleted:      item.Deleted,
 		}
 	}
 	return result
@@ -351,7 +357,7 @@ type DuplicateScanResponse struct {
 	TotalFiles  int                      `json:"totalFiles"`
 }
 
-func (a *App) RunDuplicateScan(sourceType string, sourceID string, patternIDs []string) (*DuplicateScanResponse, error) {
+func (a *App) RunDuplicateScan(sourceType string, sourceID string, scope string, patternIDs []string) (*DuplicateScanResponse, error) {
 	if len(patternIDs) == 0 {
 		return nil, fmt.Errorf("at least one pattern is required")
 	}
@@ -361,7 +367,7 @@ func (a *App) RunDuplicateScan(sourceType string, sourceID string, patternIDs []
 		return nil, fmt.Errorf("no valid patterns selected")
 	}
 
-	files, err := a.scanSource(sourceType, sourceID)
+	files, err := a.scanSource(sourceType, sourceID, scope)
 	if err != nil {
 		return nil, fmt.Errorf("scan failed: %w", err)
 	}
@@ -396,20 +402,20 @@ type ResizeAuditResponse struct {
 	ExtraRes []CompareResultItem `json:"extraRes"`
 }
 
-func (a *App) RunResizeAudit(sourceType string, sourceID string, resizedType string, resizedID string, suffix string) (*ResizeAuditResponse, error) {
+func (a *App) RunResizeAudit(sourceType string, sourceID string, sourceScope string, resizedType string, resizedID string, resizedScope string, suffix string) (*ResizeAuditResponse, error) {
 	if suffix == "" {
 		return nil, fmt.Errorf("suffix is required")
 	}
 
-	slog.Info("Starting resize audit", "sourceType", sourceType, "resizedType", resizedType, "suffix", suffix)
+	slog.Info("Starting resize audit", "sourceType", sourceType, "sourceScope", sourceScope, "resizedType", resizedType, "resizedScope", resizedScope, "suffix", suffix)
 
-	sourceFiles, err := a.scanSource(sourceType, sourceID)
+	sourceFiles, err := a.scanSource(sourceType, sourceID, sourceScope)
 	if err != nil {
 		return nil, fmt.Errorf("source scan failed: %w", err)
 	}
 	slog.Info("Source scan complete", "files", len(sourceFiles))
 
-	resizedFiles, err := a.scanSource(resizedType, resizedID)
+	resizedFiles, err := a.scanSource(resizedType, resizedID, resizedScope)
 	if err != nil {
 		return nil, fmt.Errorf("resized scan failed: %w", err)
 	}

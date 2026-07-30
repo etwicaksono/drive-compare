@@ -79,9 +79,9 @@ function DuplicatesPage(): React.JSX.Element {
     setSuccessMsg('');
 
     try {
-      const resp = await RunDuplicateScan(sourceType, sourceID, Array.from(selectedPatterns));
+      const resp = await RunDuplicateScan(sourceType, sourceID, 'active', Array.from(selectedPatterns));
       setResult({
-        groups: (resp.groups ?? []).map((g: { baseName: string; extension: string; relativePath: string; files: { relativePath: string; name: string; extension: string; size: number }[] }) => ({
+        groups: (resp.groups ?? []).map((g: { baseName: string; extension: string; relativePath: string; files: FileItem[] }) => ({
           baseName: g.baseName,
           extension: g.extension,
           relativePath: g.relativePath,
@@ -107,7 +107,7 @@ function DuplicatesPage(): React.JSX.Element {
       const headerItems: FileItem[] = [];
       for (const g of result.groups) {
         if (selectedGroupKeys.has(makeGroupKey(g))) {
-          headerItems.push({ relativePath: g.relativePath, name: g.baseName, extension: g.extension, size: 0 });
+          headerItems.push({ relativePath: g.relativePath, name: g.baseName, extension: g.extension, size: 0, deleted: false });
         }
       }
       if (headerItems.length === 0) return;
